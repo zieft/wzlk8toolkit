@@ -12,7 +12,7 @@ def login(username: str, password: str, port: int, hostIP: str):
     # execute command
     ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command("ls -l")
 
-    # ssh_stdout is the output from the excuted command above
+    # ssh_stdout is the output from the executed command above
     print(ssh_stdout.read())
 
     # close session
