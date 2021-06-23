@@ -5,9 +5,9 @@ from boto3.session import Session
 from botocore.config import Config
 from botocore.utils import fix_s3_host
 
-# key1 = sys.argv[1]
-key2 = sys.argv[0]
-# folder = sys.argv[2]
+# key1 = sys.argv[2]
+key2 = sys.argv[1]
+# folder = sys.argv[3]
 folder = 'mini3'
 key1 = '4G8F4PBHBLNX7ZOW8N5P'
 
