@@ -116,7 +116,7 @@ def mcAliasSet(session, workdir, aliasName, url, key, secretKey, api):
 def k8_3s3download(session, key1, key2, folder):
     stdin, stdout, stderr = session.exec_command('wget https://raw.githubusercontent.com/zieft/wzlk8toolkit/master/Scripts/s3download.py')
     print(stdout.read().decode())
-    stdin, stdout, stderr = session.exec_command('python3 s3download.py')
+    stdin, stdout, stderr = session.exec_command('python3 s3download.py {}'.format(key2))
 
 def mcUpload(session, key, secretKey, bucket, pathS3, pathJob):
     cmd = './mc cp --attr Cache-Control=max-age=90000,min-fresh=9000;\

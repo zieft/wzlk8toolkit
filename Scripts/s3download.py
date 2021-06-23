@@ -7,9 +7,11 @@ from botocore.utils import fix_s3_host
 
 # key1 = sys.argv[2]
 key2 = sys.argv[1]
+print('key2 value in s3download.py is: ',key2)  # TODO: delete before release
 # folder = sys.argv[3]
-folder = 'mini3'
+folder = '/mini3'
 key1 = '4G8F4PBHBLNX7ZOW8N5P'
+initdir = os.getcwd()
 
 my_config = Config(
     region_name='',
@@ -59,3 +61,5 @@ tempName = 0
 for file in os.listdir(os.getcwd()):
     os.rename(file, '../' + pairs[str(tempName)])
     tempName += 1
+
+os.chdir(initdir)

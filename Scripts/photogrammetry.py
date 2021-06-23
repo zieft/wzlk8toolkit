@@ -1,10 +1,9 @@
 import os
 import sys
+sys.path.append(os.path.curdir)
 from time import sleep
-
 import core.ssh
 
-sys.path.append(os.path.curdir)
 
 Pkeypassword = sys.argv[1]
 key1 = '4G8F4PBHBLNX7ZOW8N5P'
@@ -19,11 +18,16 @@ core.ssh.kubectlApply(ssh, '/home/ggr_yz/yaml_test/pvcJobMeshroom.yaml')
 # TODO: hard coded, try to use yaml templates to generate new file to local path.
 
 # wait till pods are running TODO: better idea?
-sleep(20)
+sleep(30)
+# download dataset to master node (k8-3)
+core.ssh.k8_3s3download(ssh, key1, key2, 'mini3')
+# copy file into persistent volume through pod-for-meshroom
+
+
+
+
+
 # get host machine IP:port of minio-service
 # svcIP = core.ssh.getSvcIp(ssh)
 # create an alias in minio client on master node.
 # core.ssh.mcAliasSet(ssh, workdir, 'myminio', svcIP, key1, key2, 's3v4')
-# download dataset to master node (k8-3)
-core.ssh.k8_3s3download(ssh, key1, key2, 'mini3')
-# copy file into persistent volume through pod-for-meshroom
