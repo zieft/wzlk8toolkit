@@ -1,47 +1,69 @@
-import boto3
-import logging
-from botocore.exceptions import ClientError
 import os
+
+from boto3.session import Session
 from botocore.config import Config
 from botocore.utils import fix_s3_host
-from boto3.session import Session
 
-def s3_upload(key: str, secret_key: str, endpoint_url: str, filePath: str, bucket: str):
+# key1 = sys.argv[0]
+# key2 = sys.argv[1]
+key1 = '4G8F4PBHBLNX7ZOW8N5P'
+
+
+def s3Download(key1: str, key2: str, folder):
     my_config = Config(
-        region_name = '',
+        region_name='',
 
-        s3 = {
+        s3={
             'addressing_style': 'path'
         },
-        retries = {
+        retries={
             'max_attempts': 2,
             'mode': 'standard'
         }
     )
 
     session = Session(
-        aws_access_key_id=key,
-        aws_secret_access_key=secret_key
-        )
+        aws_access_key_id=key1,
+        aws_secret_access_key=key2
+    )
     s3 = session.resource(
         service_name="s3",
         config=my_config,
         endpoint_url='https://s3.cluster.predictive-quality.io'
-        )
+    )
+
     s3.meta.client.meta.events.unregister('before-sign.s3', fix_s3_host)
 
     bucket = s3.Bucket("ggr-bucket-cbf77f1e-eea2-4b4a-88b2-ae787daf3f42")
 
-    client = s3.meta.client
+    keys = []
+    pairs = {}
+    os.mkdir('./dataCache')
+    os.chdir('./dataCache')
 
-    if os.path.isdir(filePath):
-        for root,dirs,files in os.walk(filePath):
-            for file in files:
-                client.upload_file(os.path.join(root,file), bucket, file)
+    for files in bucket.objects.filter(Prefix='mini3'):
+        print(files.key)
+        keys.append(str(files.key))
+    keys.pop(0)
+    tempName = 0
 
-    elif os.path.isfile(filePath):
-        client.upload_file(filePath, bucket, filePath.split('/')[-1]) # This is only for linux path format
-                                                                      # TODO: add Windows adaptation
-    else:
-        print('Invalid Path!')
+    for key in keys:
+        pairs[str(tempName)] = key
+        bucket.download_file(key, str(tempName))
+        tempName += 1
 
+    os.mkdir('../mini3')
+    tempName = 0
+
+    for file in os.listdir(os.getcwd()):
+        os.rename(file, '../' + pairs[str(tempName)])
+        tempName += 1
+
+        # try:
+        #     print('Copying ', files.key)
+        #     bucket.download_file(files.key, files.key)
+        # except botocore.exceptions.ClientError as e:
+        #     if e.response['Error'['Code']] == '404':
+        #         print('The object "', files.key, '" is a directory, or does not exist.')
+        #     else:
+        #         raise
