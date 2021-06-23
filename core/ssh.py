@@ -1,5 +1,4 @@
 import re
-
 import paramiko
 
 
@@ -19,8 +18,6 @@ def login(username: str, password: str, port: int, hostIP: str):
 
     # close session
     ssh.close()
-
-
 def PKeyLogin(privateKeyPath: str, keyPassword: str, hostIP: str, port: int, username: str):
     # Using a local generated secret_key file
     # if the password was not set when creating key pears, then leave keyPassword = ''
@@ -36,7 +33,6 @@ def PKeyLogin(privateKeyPath: str, keyPassword: str, hostIP: str, port: int, use
     print(stdout.read())
 
     ssh.close()
-
 def login_Trans(hostIP, port, username: str, password: str):
     trans = paramiko.Transport((hostIP, port))
     trans.connect(username=username, password=password)
@@ -49,8 +45,6 @@ def login_Trans(hostIP, port, username: str, password: str):
     print(ssh_stdout.read())
 
     trans.close()
-
-
 def PKeyLogin_Trans(keyFilePath: str, keyPassword: str, hostIP: str, port: int, username: str):
     """
 
@@ -84,26 +78,19 @@ def getstatus(session):
         print('[Success]')
     else:
         print('[failed!]')
-
-
 def pwd(session):
     stdin, stdout, stderr = session.exec_command('pwd')
     print(stdout.read().decode())
     getstatus(session)
-
-
 def ps_ef(session):
     stdin, stdout, stderr = session.exec_command('ps -ef')
     print(stdout.read().decode())
-
-
 def mcAliasSet(session, workdir, aliasName, url, key, secretKey, api):
     stdin, stdout, stderr = session.exec_command(
         workdir + '/mc alias set {} {} {} {} --api {}'.format(aliasName, url, key, secretKey, api))
     print(stdout.read().decode())
 
     return aliasName
-
 
 # def mcDownload(session, key, secretKey, bucket, pathS3, pathJob):
 #     cmd = './mc cp --attr Cache-Control=max-age=90000,min-fresh=9000;\
@@ -114,27 +101,22 @@ def mcAliasSet(session, workdir, aliasName, url, key, secretKey, api):
 #     print(stdout.read().decode())
 
 def k8_3s3download(session, key1, key2, folder):
+    print('Pulling script from github.com/zieft/wzlk8toolkit')
     stdin, stdout, stderr = session.exec_command('wget https://raw.githubusercontent.com/zieft/wzlk8toolkit/master/Scripts/s3download.py')
     print(stdout.read().decode())
+    getstatus(session)
     stdin, stdout, stderr = session.exec_command('python3 s3download.py {}'.format(key2))
-
-def mcUpload(session, key, secretKey, bucket, pathS3, pathJob):
-    cmd = './mc cp --attr Cache-Control=max-age=90000,min-fresh=9000;\
-    key1={};\
-    key2={}\
-     --recursive myminio/{} s3/{}/{}'.format(key, secretKey, pathJob, bucket, pathS3)
-
+    print(stdout.read().decode())
+def mcUpload(session, key, secretKey, pathJob, bucket, pathS3):
+    cmd = './mc cp --attr Cache-Control=max-age=90000,min-fresh=9000;key1={};key2={} --recursive myminio/{} s3/{}/{}'.format(key, secretKey, pathJob, bucket, pathS3)
+    print(cmd)
     stdin, stdout, stderr = session.exec_command(cmd)
     print(stdout.read().decode())
-
-
 def kubectlApply(session, yamlPath):
     stdin, stdout, stderr = session.exec_command('kubectl apply -f {}'.format(yamlPath))
     output = stdout.read().decode()
     print(output)
     getstatus(session)
-
-
 def kubectlGetFullPodName(session, podName: str):
     stdin, stdout, stderr = session.exec_command('kubectl get pods -n ggr')
     output = stdout.read().decode()
@@ -146,8 +128,6 @@ def kubectlGetFullPodName(session, podName: str):
     # fullName = stdout.read().decode()
     #
     # return fullName.split()
-
-
 def getSvcIp(session):
     stdin, stdout, stderr = session.exec_command('kubectl describe svc -n ggr minio-service')  # TODO: hard coded
     output = stdout.read().decode()
@@ -156,3 +136,18 @@ def getSvcIp(session):
     print('hostIP is: ', fullIP)
 
     return fullIP
+def kubectlCp(session, absfromPath, fullPodName, relToPath):
+    stdin, stdout, stderr = session.exec_command('kubectl cp {} ggr/{}:/tmp/{}'.format(absfromPath, fullPodName, relToPath))
+    output = stdout.read().decode()
+    getstatus(session)
+def kubectlDelete(session, type, name):
+    """
+
+    :param session:
+    :param type: job, service, persistentvolumeclaim
+    :param name:
+    :return:
+    """
+    stdin, stdout, stderr = session.exec_command('kubectl delete -n ggr {} {}'.format(type, name))
+    getstatus(session)
+
