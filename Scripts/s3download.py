@@ -9,7 +9,7 @@ from botocore.utils import fix_s3_host
 key2 = sys.argv[1]
 print('key2 value in s3download.py is: ',key2)  # TODO: delete before release
 # folder = sys.argv[3]
-folder = '/mini3'
+folder = 'mini3'
 key1 = '4G8F4PBHBLNX7ZOW8N5P'
 initdir = os.getcwd()
 

@@ -6,8 +6,10 @@ import core.ssh
 
 
 Pkeypassword = sys.argv[1]
+print(Pkeypassword)
 key1 = '4G8F4PBHBLNX7ZOW8N5P'
 key2 = sys.argv[2]
+print(key2)
 bucket = 'ggr-bucket-cbf77f1e-eea2-4b4a-88b2-ae787daf3f42'
 
 ssh, workdir = core.ssh.PKeyLogin_Trans('/home/yulin/Desktop/id_rsa', '{}'.format(Pkeypassword), '137.226.78.226', 22, 'ggr_yz')
