@@ -9,10 +9,12 @@ Pkeypassword = sys.argv[1]
 key1 = sys.argv[2]
 key2 = sys.argv[3]
 bucket = sys.argv[4]
-folder = sys.argv[5]
+rsa_id_path = sys.argv[5]
+folder = sys.argv[6]
+
 
 print('SSH connection established!')
-ssh, workdir = core.ssh.PKeyLogin_Trans('/home/yulin/Desktop/id_rsa', '{}'.format(Pkeypassword), '137.226.78.226', 22, 'ggr_yz')
+ssh, workdir = core.ssh.PKeyLogin_Trans(rsa_id_path, '{}'.format(Pkeypassword), '137.226.78.226', 22, 'ggr_yz')
 # TODO: hard coded
 
 # create a pvc and bound a pod for meshroom.
