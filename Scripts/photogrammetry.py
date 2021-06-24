@@ -26,7 +26,7 @@ sleep(30)
 
 # download dataset to master node (k8-3)
 print('Downloading dataset to the master node...')
-core.ssh.k8_3s3download(ssh, key1, key2, 'mini3') #TODO: 'mini3' hard coded
+core.ssh.k8_3s3download(ssh, key1, key2, folder) #TODO: test change
 sleep(30)
 
 # get full pod name

@@ -5,12 +5,14 @@ from boto3.session import Session
 from botocore.config import Config
 from botocore.utils import fix_s3_host
 
-# key1 = sys.argv[2]
-key2 = sys.argv[1]
+key1 = sys.argv[1]
+key2 = sys.argv[2]
 print('key2 value in s3download.py is: ',key2)  # TODO: delete before release
-# folder = sys.argv[3]
-folder = 'mini3'
-key1 = '4G8F4PBHBLNX7ZOW8N5P'
+folder = sys.argv[3]
+
+endpoint_url = 'https://s3.cluster.predictive-quality.io'
+bucket_ggr = "ggr-bucket-cbf77f1e-eea2-4b4a-88b2-ae787daf3f42"
+
 initdir = os.getcwd()
 
 my_config = Config(
@@ -32,12 +34,12 @@ session = Session(
 s3 = session.resource(
     service_name="s3",
     config=my_config,
-    endpoint_url='https://s3.cluster.predictive-quality.io'
+    endpoint_url=endpoint_url
 )
 
 s3.meta.client.meta.events.unregister('before-sign.s3', fix_s3_host)
 
-bucket = s3.Bucket("ggr-bucket-cbf77f1e-eea2-4b4a-88b2-ae787daf3f42")
+bucket = s3.Bucket(bucket_ggr)
 
 keys = []
 pairs = {}
