@@ -80,7 +80,7 @@ print('Uploading output data to S3 Storage...')
 # core.ssh.mcUpload(ssh, key1, key2,  'MeshroomCache', bucket, folder+'_out')
 _, stdout, _ =ssh.exec_command('./mc cp --attr Cache-Control=max-age=90000,min-fresh=9000\;key1={}\;key2={} --recursive myminio/MeshroomCache/ s3/ggr-bucket-cbf77f1e-eea2-4b4a-88b2-ae787daf3f42/mini3_out'.format(key1, key2))
 print(stdout.read().decode())
-sleep(60)
+# sleep(60)
 
 # delete job, svc and pvc
 print('Job finished, clearing cache...')

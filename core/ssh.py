@@ -138,7 +138,7 @@ def kubectlGetFullPodName(session, podName: str):
 def getSvcIp(session):
     stdin, stdout, stderr = session.exec_command('kubectl describe svc -n ggr minio-service')  # TODO: hard coded
     output = stdout.read().decode()
-    svcIP = re.findall(r'10..........9000', output)
+    svcIP = re.findall(r'10.*?9000', output)
     fullIP = 'http://' + svcIP[0]
     print('hostIP is: ', fullIP)
 
