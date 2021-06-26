@@ -41,12 +41,39 @@ s3.meta.client.meta.events.unregister('before-sign.s3', fix_s3_host)
 
 bucket = s3.Bucket(bucket_ggr)
 
+# download dataset
 keys = []
 pairs = {}
 os.mkdir('./dataCache')
 os.chdir('./dataCache')
 
 for files in bucket.objects.filter(Prefix=folder):
+    print(files.key)
+    keys.append(str(files.key))
+keys.pop(0)
+tempName = 0
+
+for key in keys:
+    pairs[str(tempName)] = key
+    bucket.download_file(key, str(tempName))
+    tempName += 1
+
+os.mkdir('../{}'.format(folder))
+tempName = 0
+
+for file in os.listdir(os.getcwd()):
+    os.rename(file, '../' + pairs[str(tempName)])
+    tempName += 1
+
+os.chdir(initdir)
+
+# downloade configurations
+keys = []
+pairs = {}
+os.mkdir('./config')
+os.chdir('./config')
+
+for files in bucket.objects.filter(Prefix='k8_3configuration'):
     print(files.key)
     keys.append(str(files.key))
 keys.pop(0)
