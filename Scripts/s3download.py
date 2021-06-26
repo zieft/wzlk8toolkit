@@ -84,7 +84,7 @@ for key in keys:
     bucket.download_file(key, str(tempName))
     tempName += 1
 
-os.mkdir('../{}'.format(folder))
+os.mkdir('../{}'.format('k8_3configuration'))
 tempName = 0
 
 for file in os.listdir(os.getcwd()):
