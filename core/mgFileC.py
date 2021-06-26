@@ -1,13 +1,14 @@
 import io
-import os
+import sys
 import json
 
 ### NOTE: This script is tested only in Linux! ###
-
+folder = sys.argv[1]
 
 
 # Get current workdir
-currentPath = os.getcwd() + '/'
+# currentPath = os.getcwd() + '/'
+pathInContainer = '/tmp/{}'.format(folder) + '/'
 dbFileInDocker = '/opt/AliceVision_bundle/share/aliceVision/cameraSensors.db'
 
 # Define the path to the .mg file needed to be convert

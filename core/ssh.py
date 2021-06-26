@@ -1,5 +1,6 @@
 import re
 import paramiko
+import time
 
 
 def login(username: str, password: str, port: int, hostIP: str):
@@ -75,13 +76,18 @@ def PKeyLogin_Trans(keyFilePath: str, keyPassword: str, hostIP: str, port: int, 
     return ssh, workdir
 
 
+def printTime():
+    now = int(round(time.time()*1000))
+    now2 = '[{}]'.format(time.strftime('%d-%m-%Y %H:%M:%S',time.localtime(now/1000)))
+
+    return now2
 
 def getstatus(session):
     stdin, stdout, stderr = session.exec_command('echo $?')
     if stdout.read().decode() == '0\n':
-        print('[Success]')
+        print(printTime(), 'Success!')
     else:
-        print('[failed!]')
+        print(printTime(), 'failed!')
 
 def pwd(session):
     stdin, stdout, stderr = session.exec_command('pwd')
@@ -103,11 +109,12 @@ def mcAliasSet(session, workdir, aliasName, url, key, secretKey, api):
 
 def k8_3s3download(session, key1, key2, folder):
     print('Pulling script from github.com/zieft/wzlk8toolkit')
-    stdin, stdout, stderr = session.exec_command('wget https://raw.githubusercontent.com/zieft/wzlk8toolkit/master/Scripts/s3download.py')
+    _, stdout,_ = session.exec_command('mkdir ./wzlk8toolkitCache && cd wzlk8toolkitCache/; wget https://raw.githubusercontent.com/zieft/wzlk8toolkit/master/Scripts/s3download.py ; python3 s3download.py {} {} {}'.format(key1, key2, folder))
+    # stdin, stdout, stderr = session.exec_command('wget https://raw.githubusercontent.com/zieft/wzlk8toolkit/master/Scripts/s3download.py')
     print(stdout.read().decode())
+    # stdin, stdout, stderr = session.exec_command('python3 s3download.py {} {} {}'.format(key1, key2, folder))
+    # print(stdout.read().decode())
     getstatus(session)
-    stdin, stdout, stderr = session.exec_command('python3 s3download.py {} {} {}'.format(key1, key2, folder))
-    print(stdout.read().decode())
 
 def mcUpload(session, key, secretKey, pathJob, bucket, pathS3):
     cmd = './mc cp --attr Cache-Control=max-age=90000,min-fresh=9000;key1={};key2={} --recursive myminio/{} s3/{}/{}'.format(key, secretKey, pathJob, bucket, pathS3)
