@@ -64,8 +64,8 @@ if mgFileName != '':
     urlToMgFileEditer = 'https://raw.githubusercontent.com/zieft/wzlk8toolkit/master/Scripts/mgFileEditor.py'
     ssh.exec_command('kubectl exec -n ggr {} -- cd /tmp/{} && wget {} && python mgFileEditor.py {}'.format(fullPodName, folder, urlToMgFileEditer, mgFileName))
     core.ssh.getstatus(ssh)
-
-
+    _, stdout, _ = ssh.exec_command('kubectl exec -n ggr {} -- meshroom_compute --cache /tmp/MeshroomCache {}'.format(fullPodName, mgFileName))
+    print(core.ssh.printTime(), stdout.read().decode())
 
 
 else:
