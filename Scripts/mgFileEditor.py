@@ -16,9 +16,9 @@ with open(pipelineMgFile) as pipelineFile:
 with open(generatedMgFileName) as generatedFile:
     imagePath = json.load(generatedFile)
 
-pipeline['graph']['CameraInit_1']['viewpoints'] = imagePath['graph']['CameraInit_1']['viewpoints']
-pipeline['graph']['CameraInit_1']['intrinsics'] = imagePath['graph']['CameraInit_1']['intrinsics']
-pipeline['graph']['CameraInit_1']['sensorDatabase'] = imagePath['graph']['CameraInit_1']['sensorDatabase']
+pipeline['graph']['CameraInit_1']['inputs']['viewpoints'] = imagePath['graph']['CameraInit_1']['inputs']['viewpoints']
+pipeline['graph']['CameraInit_1']['inputs']['intrinsics'] = imagePath['graph']['CameraInit_1']['inputs']['intrinsics']
+pipeline['graph']['CameraInit_1']['inputs']['sensorDatabase'] = imagePath['graph']['CameraInit_1']['inputs']['sensorDatabase']
 
 pipeline['graph']['FeatureExtraction_1']['maxThreads'] = 20
 
