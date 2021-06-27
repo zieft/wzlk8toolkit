@@ -109,16 +109,17 @@ def mcAliasSet(session, workdir, aliasName, url, key, secretKey, api):
 
 def k8_3s3download(session, key1, key2, folder):
     print('Pulling script from github.com/zieft/wzlk8toolkit')
-    _, stdout,_ = session.exec_command('mkdir ./wzlk8toolkitCache && cd wzlk8toolkitCache/; wget https://raw.githubusercontent.com/zieft/wzlk8toolkit/master/Scripts/s3download.py ; python3 s3download.py {} {} {}'.format(key1, key2, folder))
+    _, stdout,_ = session.exec_command('mkdir ./wzlk8toolkitCache; cd wzlk8toolkitCache/; wget https://raw.githubusercontent.com/zieft/wzlk8toolkit/master/Scripts/s3download.py ; python3 s3download.py {} {} {}'.format(key1, key2, folder))
     # stdin, stdout, stderr = session.exec_command('wget https://raw.githubusercontent.com/zieft/wzlk8toolkit/master/Scripts/s3download.py')
     print(stdout.read().decode())
     # stdin, stdout, stderr = session.exec_command('python3 s3download.py {} {} {}'.format(key1, key2, folder))
     # print(stdout.read().decode())
     getstatus(session)
 
-def mcUpload(session, key, secretKey, pathJob, bucket, pathS3):
-    cmd = './mc cp --attr Cache-Control=max-age=90000,min-fresh=9000;key1={};key2={} --recursive myminio/{} s3/{}/{}'.format(key, secretKey, pathJob, bucket, pathS3)
-    print(cmd)
+def mcUpload(session, key1, key2, pathJob, bucket, pathS3):
+    # cmd = './mc cp --attr Cache-Control=max-age=90000,min-fresh=9000;key1={};key2={} --recursive myminio/{} s3/{}/fromCluster/{}'.format(key, secretKey, pathJob, bucket, pathS3)
+    cmd = './mc cp --attr Cache-Control=max-age=90000,min-fresh=9000\;key1={}\;key2={} --recursive myminio/{} s3/{}/outputsFromCluster/{}_out'.format(key1, key2, pathJob, bucket, pathS3)
+    # print(cmd)
     stdin, stdout, stderr = session.exec_command(cmd)
     print(stdout.read().decode())
 
