@@ -11,6 +11,7 @@ pipelineMgFile = sys.argv[1]
 folder = sys.argv[2]
 
 generatedMgFileName = '/tmp/{}/generatedMgTemplate.mg'.format(folder)
+print(generatedMgFileName)
 
 with open(pipelineMgFile) as pipelineFile:
     pipeline = json.load(pipelineFile)
