@@ -82,5 +82,5 @@ def s3tok8_3(folderToDownload, newFolderName):
 
 s3tok8_3(folder, 'dataCache')
 s3tok8_3('k8_3configuration', 'config')
-s3tok8_3('mgFileTemplates', 'mgFileTemplates')
+s3tok8_3('mgFileTemplates', 'mgFiles')
 # downloade configurations
