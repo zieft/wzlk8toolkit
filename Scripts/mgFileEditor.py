@@ -20,7 +20,7 @@ pipeline['graph']['CameraInit_1']['inputs']['viewpoints'] = imagePath['graph']['
 pipeline['graph']['CameraInit_1']['inputs']['intrinsics'] = imagePath['graph']['CameraInit_1']['inputs']['intrinsics']
 pipeline['graph']['CameraInit_1']['inputs']['sensorDatabase'] = imagePath['graph']['CameraInit_1']['inputs']['sensorDatabase']
 
-pipeline['graph']['FeatureExtraction_1']['maxThreads'] = 20
+pipeline['graph']['FeatureExtraction_1']['inputs']['maxThreads'] = 20
 
 with open(pipelineMgFile, 'w') as f:
     json.dump(pipeline, f)
