@@ -38,7 +38,7 @@ print(core.ssh.printTime(), 'Pod name is: ', fullPodName)
 
 # copy file into persistent volume through pod-for-meshroom
 print(core.ssh.printTime(), 'Moving dataset into computation units...')
-core.ssh.kubectlCp(ssh, '{}/wzlk8toolkitCache/mini3'.format(workdir), fullPodName, 'mini3')
+core.ssh.kubectlCp(ssh, '{}/wzlk8toolkitCache/{}'.format(workdir, folder), fullPodName, '{}'.format(folder))
 
 # Change AliceVision_install to AliceVision_bundle in the container.
 print(core.ssh.printTime(), 'Initiating computing environment...')
@@ -56,17 +56,34 @@ if mgFileName != '':
     """
     # generate a project .mg file from dataset
     print(core.ssh.printTime(), 'Generating a standard .mg file.')
-    _, stdout, _ = ssh.exec_command('kubectl exec -n ggr {} -- meshroom_batch -i /tmp/{} --compute no --save /tmp/{}/generatedMgTemplate.mg'.format(fullPodName, folder, folder))
-    print(core.ssh.printTime(), stdout.read().decode())
-    _, stdout, _ = ssh.exec_command('kubectl exec -n ggr {} -- rm -rf /tmp/{}/MeshroomCache'.format(fullPodName, folder))
-    # download mgFileEditer.py from github.com/zieft/wzlk8toolkit and run with python2.7
-    print(core.ssh.printTime(), 'Inserting customized computing graph')
-    urlToMgFileEditer = 'https://raw.githubusercontent.com/zieft/wzlk8toolkit/master/Scripts/mgFileEditor.py'
-    ssh.exec_command('kubectl exec -n ggr {} -- cd /tmp/{} && wget {} && python mgFileEditor.py {}'.format(fullPodName, folder, urlToMgFileEditer, mgFileName))
-    core.ssh.getstatus(ssh)
-    _, stdout, _ = ssh.exec_command('kubectl exec -n ggr {} -- meshroom_compute --cache /tmp/MeshroomCache {}'.format(fullPodName, mgFileName))
+    _, stdout, _ = ssh.exec_command('kubectl exec -n ggr {} -- meshroom_batch -i /tmp/{} --compute no --save /tmp/{}/generatedMgTemplate.mg -o /tmp/MeshroomCache'.format(fullPodName, folder, folder))
     print(core.ssh.printTime(), stdout.read().decode())
 
+    # create a shell script in k8-3
+    ssh.exec_command('echo "#!/bin/sh\npython /tmp/{}/mgFileEditor.py /tmp/{}/{} {}" > {}/wzlk8toolkitCache/mgFileTemplates/runpython.sh'.format(folder,folder, mgFileName, folder, workdir,))
+
+    # copy the shell script into container, this script is used to run python scripts inside container.
+    core.ssh.kubectlCp(ssh, '{}/wzlk8toolkitCache/mgFileTemplates/runpython.sh'.format(workdir), fullPodName, '{}'.format(folder))
+
+    # copy project mgFile into container
+    core.ssh.kubectlCp(ssh, '{}/wzlk8toolkitCache/mgFileTemplates/{}'.format(workdir, mgFileName), fullPodName, '{}'.format(folder))
+
+    # _, stdout, _ = ssh.exec_command('kubectl exec -n ggr {} -- rm -rf /tmp/{}/MeshroomCache'.format(fullPodName, folder))
+    # download mgFileEditer.py from github.com/zieft/wzlk8toolkit and run with python2.7
+
+    print(core.ssh.printTime(), 'Inserting customized computing graph')
+    urlToMgFileEditer = 'https://raw.githubusercontent.com/zieft/wzlk8toolkit/master/Scripts/mgFileEditor.py'
+    _, stdout, _ = ssh.exec_command('kubectl exec -n ggr {} -- wget -P /tmp/{} {}'.format(fullPodName, folder, urlToMgFileEditer))
+    print(core.ssh.printTime(), stdout.read().decode())
+
+    _, stdout, _ = ssh.exec_command('kubectl exec -n ggr {} -- bash /tmp/{}/runpython.sh'.format(fullPodName, folder))
+    print(core.ssh.printTime(), stdout.read().decode())
+    core.ssh.getstatus(ssh)
+
+
+    print(core.ssh.printTime(), 'Computing...This process may take hours to finish, please wait...')
+    _, stdout, _ = ssh.exec_command('kubectl exec -n ggr {} -- meshroom_compute --cache /tmp/MeshroomCache /tmp/{}/{}'.format(fullPodName, folder, mgFileName))
+    print(core.ssh.printTime(), stdout.read().decode())
 
 else:
     # run a standard pipeline

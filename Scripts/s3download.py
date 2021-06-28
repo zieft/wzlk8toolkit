@@ -81,6 +81,6 @@ def s3tok8_3(folderToDownload, newFolderName):
     os.chdir(initdir)
 
 s3tok8_3(folder, 'dataCache')
-s3tok8_3('k8_3configuration', 'config')
-s3tok8_3('mgFileTemplates', 'mgFiles')
+s3tok8_3('k8_3configuration', 'configCache')
+s3tok8_3('mgFileTemplates', 'mgFilesCache')
 # downloade configurations
