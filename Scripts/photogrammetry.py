@@ -88,7 +88,7 @@ if mgFileName != '':
 else:
     # run a standard pipeline
     print(core.ssh.printTime(), 'Computing...Please wait...')
-    _,stdout,_ = sshSession.exec_command('kubectl exec -n ggr {} -- meshroom_batch -i /tmp/mini3 -o /tmp/MeshroomCache/mini3_out'.format(fullPodName))
+    _,stdout,_ = sshSession.exec_command('kubectl exec -n ggr {} -- meshroom_batch -i /tmp/{} -o /tmp/MeshroomCache/{}_out'.format(fullPodName, folder, folder))
     print(stdout.read().decode())
     core.ssh.getstatus(sshSession)
 

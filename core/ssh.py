@@ -108,7 +108,6 @@ def mcAliasSet(session, workdir, aliasName, url, key, secretKey, api):
     return aliasName
 
 def k8_3s3download(session, key1, key2, folder):
-    print('Pulling script from github.com/zieft/wzlk8toolkit')
     _, stdout,_ = session.exec_command('mkdir ./wzlk8toolkitCache; cd wzlk8toolkitCache/; wget https://raw.githubusercontent.com/zieft/wzlk8toolkit/master/Scripts/s3download.py ; python3 s3download.py {} {} {}'.format(key1, key2, folder))
     # stdin, stdout, stderr = session.exec_command('wget https://raw.githubusercontent.com/zieft/wzlk8toolkit/master/Scripts/s3download.py')
     print(stdout.read().decode())
