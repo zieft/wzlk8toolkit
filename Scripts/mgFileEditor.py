@@ -23,7 +23,7 @@ nodeList = list(pipeline['graph'].keys())
 
 for node in nodeList:
     if 'ImageMatching_' in node:
-        pipeline['graph'][node]['inputs']['tree'] = imagePath['graph']['CameraInit_1']['inputs']['tree']
+        pipeline['graph'][node]['inputs']['tree'] = imagePath['graph']['ImageMatching_1']['inputs']['tree']
     elif 'CameraInit_' in node:
         pipeline['graph'][node]['inputs']['viewpoints'] = imagePath['graph']['CameraInit_1']['inputs']['viewpoints']
         pipeline['graph'][node]['inputs']['intrinsics'] = imagePath['graph']['CameraInit_1']['inputs']['intrinsics']
