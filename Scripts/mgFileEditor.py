@@ -19,11 +19,24 @@ with open(pipelineMgFile) as pipelineFile:
 with open(generatedMgFileName) as generatedFile:
     imagePath = json.load(generatedFile)
 
-pipeline['graph']['CameraInit_1']['inputs']['viewpoints'] = imagePath['graph']['CameraInit_1']['inputs']['viewpoints']
-pipeline['graph']['CameraInit_1']['inputs']['intrinsics'] = imagePath['graph']['CameraInit_1']['inputs']['intrinsics']
-pipeline['graph']['CameraInit_1']['inputs']['sensorDatabase'] = imagePath['graph']['CameraInit_1']['inputs']['sensorDatabase']
+nodeList = list(pipeline['graph'].keys())
 
-pipeline['graph']['FeatureExtraction_1']['inputs']['maxThreads'] = 20
+for node in nodeList:
+    if 'ImageMatching_' in node:
+        pipeline['graph'][node]['inputs']['tree'] = imagePath['graph']['CameraInit_1']['inputs']['tree']
+    elif 'CameraInit_' in node:
+        pipeline['graph'][node]['inputs']['viewpoints'] = imagePath['graph']['CameraInit_1']['inputs']['viewpoints']
+        pipeline['graph'][node]['inputs']['intrinsics'] = imagePath['graph']['CameraInit_1']['inputs']['intrinsics']
+        pipeline['graph'][node]['inputs']['sensorDatabase'] = imagePath['graph']['CameraInit_1']['inputs']['sensorDatabase']
+    elif 'FeatureExtraction_' in node:
+        pipeline['graph'][node]['inputs']['maxThreads'] = 20
+
+
+# pipeline['graph']['CameraInit_1']['inputs']['viewpoints'] = imagePath['graph']['CameraInit_1']['inputs']['viewpoints']
+# pipeline['graph']['CameraInit_1']['inputs']['intrinsics'] = imagePath['graph']['CameraInit_1']['inputs']['intrinsics']
+# pipeline['graph']['CameraInit_1']['inputs']['sensorDatabase'] = imagePath['graph']['CameraInit_1']['inputs']['sensorDatabase']
+#
+# pipeline['graph']['FeatureExtraction_1']['inputs']['maxThreads'] = 20
 
 with open(pipelineMgFile, 'w') as f:
     json.dump(pipeline, f)

@@ -51,7 +51,8 @@ core.ssh.getstatus(sshSession)
 
 if mgFileName != '':
     """
-    given .mg file should be put in the raw dataset folder and must be generated or
+    given .mg file should NOT be put in the raw dataset folder 
+    it should be placed in the mgFileTemplates folder and must be generated or
     converted from Meshroom version 2021.1!
     """
     # generate a project .mg file from dataset
