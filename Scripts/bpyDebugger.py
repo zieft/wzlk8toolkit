@@ -92,7 +92,7 @@ render_through_camera(best_camera_angle_co)
 
 
 iml = readImageBIN(work_dir+'{}.png'.format(best_camera_angle), BIN=False)
-imr = readImageBIN(work_dir'{}.png'.format(best_camera_angle_co), BIN=False)
+imr = readImageBIN(work_dir+'{}.png'.format(best_camera_angle_co), BIN=False)
 height, width = iml.shape[0:2]
 
 stereo_config = stereoCamera(best_camera_angle, best_camera_angle_co)
