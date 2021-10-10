@@ -61,8 +61,9 @@ for camera in cameraList:
 
 numbers_of_markers_detected = 0
 best_camera_angle = ''
+aruco_info = {}
 for camera in cameraList:
-    img = readImageBIN('/tmp/renders/{}.png'.format(camera['name']))
+    img = readImageBIN(work_dir+'{}.png'.format(camera['name']))
     try:
         corners, ids, rejectedImgPoints = aruco.detectMarkers(img, aruco_dict, parameters=parameters)
         frame_markers = aruco.drawDetectedMarkers(img.copy(), corners, ids)
@@ -72,11 +73,13 @@ for camera in cameraList:
             if len(ids) > numbers_of_markers_detected:
                 numbers_of_markers_detected = len(ids)
                 best_camera_angle = camera['name']
+                aruco_info['corners'] = corners
+                aruco_info['ids'] = ids
             for i in range(len(ids)):
                 c = corners[i][0]
                 plt.plot([c[:, 0].mean()], [c[:, 1].mean()], label="id={0}".format(ids[i]))
             plt.legend()
-            plt.savefig('/tmp/renders/detected_{}.png'.format(camera['name']), dpi=1000)
+            plt.savefig(work_dir+'detected_{}.png'.format(camera['name']), dpi=1000)
             plt.show()
     except cv2.error:
         pass
@@ -88,8 +91,8 @@ best_camera_angle_co = add_co_camera(best_camera_angle)
 render_through_camera(best_camera_angle_co)
 
 
-iml = readImageBIN('/tmp/renders/{}.png'.format(best_camera_angle), BIN=False)
-imr = readImageBIN('/tmp/renders/{}.png'.format(best_camera_angle_co), BIN=False)
+iml = readImageBIN(work_dir+'{}.png'.format(best_camera_angle), BIN=False)
+imr = readImageBIN(work_dir'{}.png'.format(best_camera_angle_co), BIN=False)
 height, width = iml.shape[0:2]
 
 stereo_config = stereoCamera(best_camera_angle, best_camera_angle_co)
@@ -103,7 +106,7 @@ line = draw_line(iml_rectified, imr_rectified)
 # cv2.imwrite('/tmp/renders/validation.png', line)
 plt.figure()
 plt.imshow(line)
-plt.savefig('/tmp/renders/validation.png', dpi=1000)
+plt.savefig(work_dir+'validation.png', dpi=1000)
 
 
 # 立体匹配
@@ -112,4 +115,20 @@ disp, _ = stereoMatchSGBM(iml_rectified, imr_rectified, True)  # 这里传入的
 # cv2.imwrite('/tmp/renders/视差.png', disp)
 plt.figure()
 plt.imshow(disp)
-plt.savefig('/tmp/renders/z_disparity_map.png', dpi=1000)
+plt.savefig(work_dir+'z_disparity_map.png', dpi=1000)
+
+points_3d = cv2.reprojectImageTo3D(disp, Q)
+
+for area in bpy.context.screen.areas:
+    if area.type == 'VIEW_3D':
+        ctx = bpy.context.copy()
+        ctx['area'] = area
+        ctx['region'] = area.regions[-1]
+        # TODO: select camera
+        bpy.ops.view3d.view_selected(ctx)
+        bpy.ops.view3d.snap_cursor_to_selected(ctx)
+
+
+for i in len(aruco_info['ids']):
+    u, v = tuple(aruco_info['corners'][i][0][0].astype(int))
+    coordinate_of_uv = tuple(points_3d[u, v, :])
