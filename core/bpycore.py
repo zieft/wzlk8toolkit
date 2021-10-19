@@ -10,10 +10,11 @@ import matplotlib.pyplot as plt
 from matplotlib import pyplot
 
 aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
-parameters = aruco.DetectorParameters_create()
+aruco_parameters = aruco.DetectorParameters_create()
 
-camera_baseline_translation = (0.1, 0, 0) # 1 meter along x axis
-work_dir = '/tmp/renders/'
+camera_baseline_translation = (0.1, 0, 0) # 0.1 meter along x axis
+work_dir = r'C:\Users\zieft\Desktop\test1\renders\\'
+
 
 def get_calibration_matrix_K_from_blender(camd):
     """
@@ -72,13 +73,135 @@ def get_3x4_RT_matrix_from_blender(cam):
     T_world2cv = R_bcam2cv @ T_world2bcam
     # put into 3x4 matrix
     RT = Matrix((R_world2cv[0][:] + (T_world2cv[0],), R_world2cv[1][:] + (T_world2cv[1],), R_world2cv[2][:] + (T_world2cv[2],)))
-    return RT, location, rotation
+    return RT
 
 
 def get_3x4_P_matrix_from_blender(cam):
     K = get_calibration_matrix_K_from_blender(cam.data)
     RT = get_3x4_RT_matrix_from_blender(cam)
-    return K @ RT, K, RT
+    return K @ RT
+
+
+class cameraObject():
+    def __init__(self, cameraName):
+        self.cameraName = cameraName
+        self.location_world = np.array(bpy.data.objects[cameraName].location)
+        self.R_world2cam = np.array(bpy.data.objects[cameraName].matrix_world)[:3, :3]
+        self.T_world2cam = np.array(bpy.data.objects[cameraName].matrix_world)[:3, 3].reshape((1, 3))
+        self.K = np.array(get_calibration_matrix_K_from_blender(bpy.data.objects[cameraName].data), dtype=float)
+
+
+
+
+
+
+
+# camera22 = cameraObject('camera22')
+
+def verify_point_world(point_coor_world):
+    bpy.ops.object.light_add(type='SUN', radius=1, location=point_coor_world)
+
+
+def info_marker_uv(id, aruco_info):
+    uv_corner_0 = aruco_info['corners'][id][0][0].astype('int').tolist()
+    uv_corner_1 = aruco_info['corners'][id][0][1].astype('int').tolist()
+    uv_corner_2 = aruco_info['corners'][id][0][2].astype('int').tolist()
+    uv_corner_3 = aruco_info['corners'][id][0][3].astype('int').tolist()
+    return uv_corner_0, uv_corner_1, uv_corner_2, uv_corner_3
+
+
+def point_3d_camera_2_world(point_coor_camera_np, camera_obj):
+    point_coor_camera = point_coor_camera_np.reshape((1, 3))
+    R_world2cam = camera_obj.R_world2cam
+    T_world2cam = camera_obj.T_world2cam
+    point_coor_world_np = np.dot(R_world2cam ,point_coor_camera.T) + T_world2cam.T
+    point_coor_world_tuple = (point_coor_world_np[0][0], point_coor_world_np[1][0], point_coor_world_np[2][0])
+    return point_coor_world_tuple
+
+
+def corners_uv_2_3d_world(points_3d, aruco_info, id, cameraObj):
+    lenth_of_ids = len(aruco_info['ids'])
+    which_marker = aruco_info['ids'].reshape((1,lenth_of_ids)).tolist()[0].index(id)
+    uv_corner_0 = tuple(aruco_info['corners'][which_marker][0][0].astype('int').tolist())
+    uv_corner_1 = tuple(aruco_info['corners'][which_marker][0][1].astype('int').tolist())
+    uv_corner_2 = tuple(aruco_info['corners'][which_marker][0][2].astype('int').tolist())
+    uv_corner_3 = tuple(aruco_info['corners'][which_marker][0][3].astype('int').tolist())
+    corner0_coor_camera = points_3d[uv_corner_0]
+    corner1_coor_camera = points_3d[uv_corner_1]
+    corner2_coor_camera = points_3d[uv_corner_2]
+    corner3_coor_camera = points_3d[uv_corner_3]
+    corners_coor_world_tuple_list = [
+        point_3d_camera_2_world(corner0_coor_camera, cameraObj),
+        point_3d_camera_2_world(corner1_coor_camera, cameraObj),
+        point_3d_camera_2_world(corner2_coor_camera, cameraObj),
+        point_3d_camera_2_world(corner3_coor_camera, cameraObj)
+    ]
+    return corners_coor_world_tuple_list
+
+# corners_uv_2_3d_world(points_3d, aruco_info, 6, camera22)
+
+def Point_3d_camera_2_world(point_coor_camera, camera_obj):
+    point_coor_camera = point_coor_camera.reshape((1, 3))
+    R_world2cam = camera_obj.R_world2cam
+    T_world2cam = camera_obj.T_world2cam
+    point_coor_world_np = np.dot(R_world2cam ,point_coor_camera.T) + T_world2cam.T
+    point_coor_world_tuple = (point_coor_world_np[0][0], point_coor_world_np[1][0], point_coor_world_np[2][0])
+    return point_coor_world_tuple
+
+
+def detect_save_aruco_info_image(camera, img, work_dir=work_dir):
+    try:
+        corners, ids, rejectedImgPoints = aruco.detectMarkers(img, aruco_dict, parameters=aruco_parameters)
+        frame_markers = aruco.drawDetectedMarkers(img.copy(), corners, ids)
+        plt.figure()
+        plt.imshow(frame_markers)
+        if ids is not None:
+            for i in range(len(ids)):
+                c = corners[i][0]
+                plt.plot([c[:, 0].mean()], [c[:, 1].mean()], label="id={0}".format(ids[i]))
+            plt.legend()
+            if isinstance(camera, dict):
+                plt.savefig(work_dir + 'detected_{}.png'.format(camera['name']), dpi=1000)
+            elif isinstance(camera, str):
+                plt.savefig(work_dir + 'detected_{}.png'.format(camera), dpi=1000)
+            plt.show()
+            plt.close()
+    except cv2.error:
+        pass
+    return corners, ids, rejectedImgPoints
+
+# def verify_aruco_marker(detectedMarker_obj):
+#
+
+# class arucoInfo():
+#     def __init__(self, ids, cameraName):
+#         camera = self.__dict__
+#         camera['camera'+id]
+#         # self.camera = cameraName
+#         # self.number_of_detection = len(ids)
+#         # self.ids = ids.tolist
+#         # self.info = dict(zip(ids, corners))
+#
+#     def get_corner_coor_list(self, id):
+#         corner = self.info[id]
+#         return corner
+
+
+# class detectedMarker():
+#     def __init__(self, aruco_info_obj):
+#         names = self.__dict__
+#         for i in range(len(aruco_info_obj.ids)):
+#             names['Marker_id'+i] = aruco_info_obj.get_corner_coor_list(i)
+
+
+
+
+# Points_3d_camera_2_world(corner1, camera22)
+
+# class remappedPoints():
+#     def __init__(self, disp, Q):
+#         self.points_coor_cv2 = cv2.reprojectImageTo3D(disp, Q)
+#         self.Points_coor_blender = -self.points_coor_cv2[:,:, 1:3]
 
 
 class stereoCamera(object):
@@ -87,11 +210,50 @@ class stereoCamera(object):
         self.cam_matrix_right = np.array(get_calibration_matrix_K_from_blender(bpy.data.objects[camera_right].data), dtype=float)
         self.distortion_left = np.zeros((1, 5), dtype=float)
         self.distortion_right = np.zeros((1, 5), dtype=float)
-        self.R = np.identity(3, dtype=float)
-        self.T = np.array([camera_baseline_translation], dtype=float).T
-        self.focal_length = 0.05  # mm
-        self.baseline = 0.100
+        self.R = np.eye(3, dtype=float)
+        self.T = np.array([tuple(-ti for ti in camera_baseline_translation)], dtype=float).T
+        self.focal_length = 50  # mm
+        self.baseline = 0.1 # meter
 
+
+class PointPairObject():
+    def __init__(self, aruco_info_corner_left, aruco_info_corner_right, stereo_camera_obj):
+        """
+
+        :param aruco_info_corner: One uv of a marker in aruco_info, ex.: aruco_info['corners'][0][0][0]
+        """
+        self.uv_np_l = aruco_info_corner_left
+        self.uv_np_r = aruco_info_corner_right
+        self.uv_tuple_l = tuple(aruco_info_corner_left)
+        self.uv_tuple_r = tuple(aruco_info_corner_right)
+        self.u_l = aruco_info_corner_left[0]
+        self.u_r = aruco_info_corner_right[0]
+        self.v_l = aruco_info_corner_left[1]
+        self.v_r = aruco_info_corner_right[1]
+
+        self.disparity = self.u_r - self.u_l
+
+        self.focal_length = stereo_camera_obj.focal_length
+        self.cam_matrix_l = stereo_camera_obj.cam_matrix_left
+
+        self.coor_cam_np = None
+        self.coor_cam_tuple = None
+        self.coor_world_np = None
+        self.coor_world_tuple = None
+
+    def _set_uv(self, aruco_info_corner_left, aruco_info_corner_right):
+        """
+
+        :param aruco_info_corner: One uv of a marker in aruco_info, ex.: aruco_info['corners'][0][0][0]
+        :return:
+        """
+        self.uv_np_l = aruco_info_corner_left
+        self.uv_tuple_l = tuple(aruco_info_corner_left)
+        self.uv_np_r = aruco_info_corner_right
+        self.uv_tuple_r = tuple(aruco_info_corner_right)
+
+    def uv_to_coor_cam(self):
+        f_x = self.cam_matrix_l[0][0]
 
 
 def preprocess(img1, img2):
@@ -127,7 +289,7 @@ def getRectifyTransform(height, width, config):
     map1x, map1y = cv2.initUndistortRectifyMap(left_K, left_distortion, R1, P1, (width, height), cv2.CV_32FC1)
     map2x, map2y = cv2.initUndistortRectifyMap(right_K, right_distortion, R2, P2, (width, height), cv2.CV_32FC1)
 
-    return map1x, map1y, map2x, map2y, Q
+    return map1x, map1y, map2x, map2y, Q , P1
 
 
 def rectifyImage(image1, image2, map1x, map1y, map2x, map2y):
@@ -138,7 +300,6 @@ def rectifyImage(image1, image2, map1x, map1y, map2x, map2y):
 
 
 def draw_line(image1, image2):
-    # 建立输出图像
     height = max(image1.shape[0], image2.shape[0])
     width = image1.shape[1] + image2.shape[1]
 
@@ -146,8 +307,7 @@ def draw_line(image1, image2):
     output[0:image1.shape[0], 0:image1.shape[1]] = image1
     output[0:image2.shape[0], image1.shape[1]:] = image2
 
-    # 绘制等间距平行线
-    line_interval = 50  # 直线间隔：50
+    line_interval = 50
     for k in range(height // line_interval):
         cv2.line(output, (0, line_interval * (k + 1)), (2 * width, line_interval * (k + 1)), (0, 255, 0), thickness=2,
                  lineType=cv2.LINE_AA)
@@ -156,7 +316,7 @@ def draw_line(image1, image2):
 
 
 def stereoMatchSGBM(left_image, right_image, down_scale=False):
-    # SGBM匹配参数设置
+    # SGBM matching parameters
     if left_image.ndim == 2:
         img_channels = 1
     else:
@@ -175,13 +335,13 @@ def stereoMatchSGBM(left_image, right_image, down_scale=False):
               'mode': cv2.STEREO_SGBM_MODE_SGBM_3WAY
               }
 
-    # 构建SGBM对象
+    # Build SGBM Instants
     left_matcher = cv2.StereoSGBM_create(**paraml)
     paramr = paraml
     paramr['minDisparity'] = -paraml['numDisparities']
     right_matcher = cv2.StereoSGBM_create(**paramr)
 
-    # 计算视差图
+    # Compute disparity map
     size = (left_image.shape[1], left_image.shape[0])
     if down_scale == False:
         disparity_left = left_matcher.compute(left_image, right_image)
@@ -199,7 +359,7 @@ def stereoMatchSGBM(left_image, right_image, down_scale=False):
         disparity_left = factor * disparity_left
         disparity_right = factor * disparity_right
 
-    # 真实视差（因为SGBM算法得到的视差是×16的）
+    # real disparity
     trueDisp_left = disparity_left.astype(np.float32) / 16.
     trueDisp_right = disparity_right.astype(np.float32) / 16.
 
@@ -215,15 +375,11 @@ def generateDomeCoor(numVer, numHor, radius):
     :return: list of coordinates.
     """
     r = radius
-    # phi, theta = np.mgrid[0.0:pi:100j, 0.0:2.0 * pi:100j]
     stepPhi = 2*math.pi / numHor
     stepTheta = 2*math.pi / numVer
     coordinates = []
     for i in range(numHor+1):
         for j in range(numVer+1):
-            # x = r * sin(phi) * cos(theta)
-            # y = r * sin(phi) * sin(theta)
-            # z = r * cos(phi)
             phi = i * stepPhi
             theta = j * stepTheta
             coordinate = (r * sin(phi) * cos(theta), r * sin(phi) * sin(theta), r * cos(phi))
@@ -236,7 +392,6 @@ def addCamera(coordinates, cameraNumbers):
     view_layer = bpy.context.view_layer
     cameraList = []
     for i in range(cameraNumbers+1):
-        # view_layer = bpy.context.view_layer
         cameraID = i
         cameraName = 'camera{}'.format(cameraID)
         camera_data = bpy.data.cameras.new(name=cameraName)
@@ -245,9 +400,9 @@ def addCamera(coordinates, cameraNumbers):
         camera_object.location = coordinates[i]
         camera_object.select_set(True)
         view_layer.objects.active = camera_object
-        # TODO: Calculate Rotation matrix and append it to the list
         cameraInfo = {"name": cameraName, "Coordinate": coordinates[i]}
         cameraList.append(cameraInfo)
+
         bpy.ops.object.constraint_add(type='TRACK_TO')
         bpy.context.object.constraints["Track To"].target = bpy.data.objects["Empty"]
         bpy.context.object.constraints["Track To"].track_axis = 'TRACK_NEGATIVE_Z'
@@ -276,7 +431,7 @@ def addLightSources(coordinates, Numbers):
 def render_through_camera(camera):
     scene = bpy.context.scene
     bpy.context.scene.cycles.samples = 1
-    scene.render.resolution_x = 1920
+    scene.render.resolution_x = 1620
     scene.render.resolution_y = 1080
     scene.render.resolution_percentage = 100
     scene.render.use_border = False
@@ -291,7 +446,7 @@ def render_through_camera(camera):
 
 def readImageBIN(path, BIN=True):
     """
-    cv2.imread() does not function well inside blnder python interpreter.
+    cv2.imread() does not perform well inside blender python interpreter.
     This function is meant to solve the problem.
     :param path:
     :return:
@@ -301,7 +456,7 @@ def readImageBIN(path, BIN=True):
     if BIN == True:
         kernel = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
         img = cv2.filter2D(img, -1, kernel)
-        ret, img = cv2.threshold(img, 80, 255, cv2.THRESH_BINARY)
+        ret, img = cv2.threshold(img, 90, 255, cv2.THRESH_BINARY)
     return img
 
 
@@ -329,17 +484,19 @@ def rotationMatrixToEulerAngles(R):
 
 
 def add_co_camera(best_angle_camera):
-    location_left = bpy.data.objects[best_angle_camera].location
-    rotation_matrix_left = np.array(bpy.data.objects[best_angle_camera].matrix_world)[0:3, 0:3]
-    rotation_left_euler = rotationMatrixToEulerAngles(rotation_matrix_left)
+    # location_left = bpy.data.objects[best_angle_camera].location
+    # rotation_matrix_left = np.array(bpy.data.objects[best_angle_camera].matrix_world)[0:3, 0:3]
+    RT_Matrix_left = bpy.data.objects[best_angle_camera].matrix_world
+    # rotation_left_euler = rotationMatrixToEulerAngles(rotation_matrix_left)
     # bpy.ops.object.camera_add(enter_editmode=False, align='WORLD', location=location_left, rotation=rotation_left_euler)
     view_layer = bpy.context.view_layer
     co_cameraName = best_angle_camera + '_co'
     co_camera_data = bpy.data.cameras.new(name=co_cameraName)
     co_camera_object = bpy.data.objects.new(name=co_cameraName, object_data=co_camera_data)
     view_layer.active_layer_collection.collection.objects.link(co_camera_object)
-    co_camera_object.location = location_left
-    co_camera_object.rotation_euler = rotation_left_euler
+    co_camera_object.matrix_world = RT_Matrix_left
+    # co_camera_object.location = location_left
+    # co_camera_object.rotation_euler = rotation_left_euler
     co_camera_object.select_set(True)
     view_layer.objects.active = co_camera_object
     bpy.ops.transform.translate(value=camera_baseline_translation, orient_type='LOCAL',
@@ -359,39 +516,19 @@ def hw3ToN3(points):
     return points_
 
 
-def DepthColor2Cloud(points_3d, colors):
-    rows, cols = points_3d.shape[0:2]
-    size = rows * cols
+def addSurface(verts, edges, faces):
+    view_layer = bpy.context.view_layer
+    mesh = bpy.data.meshes.new('referentPlane')
+    mesh.from_pydata(verts, edges, faces)
+    mesh.update()
+    referencePlane = bpy.data.objects.new('surface', mesh)
+    view_layer.active_layer_collection.collection.objects.link(referencePlane)
 
-    points_ = hw3ToN3(points_3d)
-    colors_ = hw3ToN3(colors).astype(np.int64)
 
-    # 颜色信息
-    blue = colors_[:, 0].reshape(size, 1)
-    green = colors_[:, 1].reshape(size, 1)
-    red = colors_[:, 2].reshape(size, 1)
-
-    rgb = np.left_shift(blue, 0) + np.left_shift(green, 8) + np.left_shift(red, 16)
-
-    # 将坐标+颜色叠加为点云数组
-    pointcloud = np.hstack((points_, rgb)).astype(np.float32)
-
-    # 删掉一些不合适的点
-    X = pointcloud[:, 0]
-    Y = pointcloud[:, 1]
-    Z = pointcloud[:, 2]
-
-    # 下面参数是经验性取值，需要根据实际情况调整
-    remove_idx1 = np.where(Z <= 0)
-    remove_idx2 = np.where(Z > 15000)
-    remove_idx3 = np.where(X > 10000)
-    remove_idx4 = np.where(X < -10000)
-    remove_idx5 = np.where(Y > 10000)
-    remove_idx6 = np.where(Y < -10000)
-    remove_idx = np.hstack(
-        (remove_idx1[0], remove_idx2[0], remove_idx3[0], remove_idx4[0], remove_idx5[0], remove_idx6[0]))
-
-    pointcloud_1 = np.delete(pointcloud, remove_idx, 0)
-
-    return pointcloud_1
-
+def detect_co_image(best_camera_angle):
+    bpy.ops.object.select_all(action='DESELECT')
+    best_camera_angle_co = add_co_camera(best_camera_angle)
+    render_through_camera(best_camera_angle_co)
+    co_img = readImageBIN(work_dir + '{}.png'.format(best_camera_angle_co))
+    co_corners, co_ids, _ = detect_save_aruco_info_image(best_camera_angle_co, co_img)
+    return co_corners, co_ids
