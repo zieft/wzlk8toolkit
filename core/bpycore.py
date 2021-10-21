@@ -12,7 +12,7 @@ from matplotlib import pyplot
 aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
 aruco_parameters = aruco.DetectorParameters_create()
 
-camera_baseline_translation = (0.1, 0, 0) # 0.1 meter along x axis
+camera_baseline_translation = (0.5, 0, 0) # 0.2 meter along x axis
 work_dir = r'C:\Users\zieft\Desktop\test1\renders\\'
 
 
@@ -91,22 +91,17 @@ class cameraObject():
         self.K = np.array(get_calibration_matrix_K_from_blender(bpy.data.objects[cameraName].data), dtype=float)
 
 
-
-
-
-
-
 # camera22 = cameraObject('camera22')
 
 def verify_point_world(point_coor_world):
     bpy.ops.object.light_add(type='SUN', radius=1, location=point_coor_world)
 
 
-def info_marker_uv(id, aruco_info):
-    uv_corner_0 = aruco_info['corners'][id][0][0].astype('int').tolist()
-    uv_corner_1 = aruco_info['corners'][id][0][1].astype('int').tolist()
-    uv_corner_2 = aruco_info['corners'][id][0][2].astype('int').tolist()
-    uv_corner_3 = aruco_info['corners'][id][0][3].astype('int').tolist()
+def info_marker_uv(id_pos, aruco_info):
+    uv_corner_0 = aruco_info['corners'][id_pos][0][0].astype('int').tolist()
+    uv_corner_1 = aruco_info['corners'][id_pos][0][1].astype('int').tolist()
+    uv_corner_2 = aruco_info['corners'][id_pos][0][2].astype('int').tolist()
+    uv_corner_3 = aruco_info['corners'][id_pos][0][3].astype('int').tolist()
     return uv_corner_0, uv_corner_1, uv_corner_2, uv_corner_3
 
 
@@ -114,7 +109,7 @@ def point_3d_camera_2_world(point_coor_camera_np, camera_obj):
     point_coor_camera = point_coor_camera_np.reshape((1, 3))
     R_world2cam = camera_obj.R_world2cam
     T_world2cam = camera_obj.T_world2cam
-    point_coor_world_np = np.dot(R_world2cam ,point_coor_camera.T) + T_world2cam.T
+    point_coor_world_np = np.dot(R_world2cam, point_coor_camera.T) + T_world2cam.T
     point_coor_world_tuple = (point_coor_world_np[0][0], point_coor_world_np[1][0], point_coor_world_np[2][0])
     return point_coor_world_tuple
 
@@ -206,6 +201,9 @@ def detect_save_aruco_info_image(camera, img, work_dir=work_dir):
 
 class stereoCamera(object):
     def __init__(self, camera_left, camera_right):
+        self.T_world2cam_l = np.array(bpy.data.objects[camera_left].matrix_world)[:3, 3].reshape((1, 3))
+        self.R_world2cam_l = np.array(bpy.data.objects[camera_left].matrix_world)[:3, :3]
+        self.cam_left_name = bpy.data.objects[camera_left].name
         self.cam_matrix_left = np.array(get_calibration_matrix_K_from_blender(bpy.data.objects[camera_left].data), dtype=float)
         self.cam_matrix_right = np.array(get_calibration_matrix_K_from_blender(bpy.data.objects[camera_right].data), dtype=float)
         self.distortion_left = np.zeros((1, 5), dtype=float)
@@ -213,13 +211,12 @@ class stereoCamera(object):
         self.R = np.eye(3, dtype=float)
         self.T = np.array([tuple(-ti for ti in camera_baseline_translation)], dtype=float).T
         self.focal_length = 50  # mm
-        self.baseline = 0.1 # meter
+        self.baseline = camera_baseline_translation[0] # meter
 
 
-class PointPairObject():
+class StereoPointObject():
     def __init__(self, aruco_info_corner_left, aruco_info_corner_right, stereo_camera_obj):
         """
-
         :param aruco_info_corner: One uv of a marker in aruco_info, ex.: aruco_info['corners'][0][0][0]
         """
         self.uv_np_l = aruco_info_corner_left
@@ -230,20 +227,18 @@ class PointPairObject():
         self.u_r = aruco_info_corner_right[0]
         self.v_l = aruco_info_corner_left[1]
         self.v_r = aruco_info_corner_right[1]
-
-        self.disparity = self.u_r - self.u_l
-
+        self.disparity = self.u_l - self.u_r
         self.focal_length = stereo_camera_obj.focal_length
         self.cam_matrix_l = stereo_camera_obj.cam_matrix_left
-
-        self.coor_cam_np = None
-        self.coor_cam_tuple = None
-        self.coor_world_np = None
-        self.coor_world_tuple = None
-
+        self.stereo_baseline = stereo_camera_obj.baseline # no need to change m to mm
+        self.c_R_w = stereo_camera_obj.R_world2cam_l
+        self.w_r_world2cam = stereo_camera_obj.T_world2cam_l # verified
+        self.coor_cam_np = self.uv_to_coor_cam()
+        self.coor_cam_tuple = tuple(self.uv_to_coor_cam())
+        self.coor_world_np = self.coor_cam_2_world()
+        self.coor_world_tuple = tuple(self.coor_cam_2_world()[0])
     def _set_uv(self, aruco_info_corner_left, aruco_info_corner_right):
         """
-
         :param aruco_info_corner: One uv of a marker in aruco_info, ex.: aruco_info['corners'][0][0][0]
         :return:
         """
@@ -251,11 +246,99 @@ class PointPairObject():
         self.uv_tuple_l = tuple(aruco_info_corner_left)
         self.uv_np_r = aruco_info_corner_right
         self.uv_tuple_r = tuple(aruco_info_corner_right)
-
     def uv_to_coor_cam(self):
-        f_x = self.cam_matrix_l[0][0]
+        f_x = self.cam_matrix_l[0][0]  # verified
+        b = self.stereo_baseline
+        d = self.disparity
+        u_0 = self.cam_matrix_l[0][2]
+        v_0 = self.cam_matrix_l[1][2]
+        X_c = b * (self.u_l - u_0) / d
+        Y_c = b * (self.v_l - v_0) / d
+        Z_c = b * f_x / d
+        return np.array([X_c, -Y_c, -Z_c]) # direction of y & z coordinates defined in blender and openCV are opposite
+    def coor_cam_2_world(self):
+        coor_world_np = np.dot(self.c_R_w, self.coor_cam_np) + self.w_r_world2cam
+        return coor_world_np
+"""
+debug:
+a = StereoPointObject([515,694], [405,694], stereo_config)
+a1, a2, a3, a4 = info_marker_uv(1, aruco_info)
+b1, b2, b3, b4 = info_marker_uv(0, aruco_info_co)
+p1 = StereoPointObject(a1, b1, stereo_config)
+p2 = StereoPointObject(a2, b2, stereo_config)
+p3 = StereoPointObject(a3, b3, stereo_config)
+p4 = StereoPointObject(a4, b4, stereo_config)
+"""
+
+def better_aruco_info(aruco_info):
+    corners = aruco_info['corners']
+    ids = aruco_info['ids']
+    ids_list = ids.reshape(len(ids)).tolist()
+    ids_list = [str(i) for i in ids_list]
+    corners_list = []
+    for i in range(len(corners)):
+        one_coner = corners[i].reshape(4,2).tolist()
+        corners_list.append(one_coner)
+    better = dict(zip(ids_list, corners_list))
+    return better
+"""
+aruco_info_better = better_aruco_info(aruco_info)
+aruco_info_co_better = better_aruco_info(aruco_info_co)
+print(aruco_info_better.keys() & aruco_info_co_better.keys())
+
+"""
 
 
+def detected_markers_common(better_aruco_info, better_aruco_info_co):
+    common_ids = better_aruco_info.keys() & better_aruco_info_co.keys()
+    print("detected markers in both pictures are: ", common_ids)
+    aruco_info_common = {}
+    aruco_info_co_common = {}
+    for i in common_ids:
+        aruco_info_common[i] = better_aruco_info[i]
+        aruco_info_co_common[i] = better_aruco_info_co[i]
+    return aruco_info_common, aruco_info_co_common, common_ids
+
+"""
+aruco_info_common, aruco_info_co_common, common_ids = detected_markers_common(aruco_info_better, aruco_info_co_better)
+"""
+
+def generate_dict_of_stereo_point_pairs_obj_allMarker(aruco_info_common, aruco_info_co_common, common_ids, stereo_config):
+    dict = {}
+    for i in common_ids:
+        list = []
+        for j in range(4):
+            stereo_corner_pair_obj = StereoPointObject(aruco_info_common[i][j], aruco_info_co_common[i][j], stereo_config)
+            exec('corner_{}_of_marker_{} = stereo_corner_pair_obj'.format(j, i))
+            exec('list.append(corner_{}_of_marker_{})'.format(j, i))
+        dict[i] = list
+    return dict
+"""
+allMarkers = generate_dict_of_stereo_point_pairs_obj_allMarker(aruco_info_common, aruco_info_co_common, common_ids ,stereo_config)
+"""
+
+class DetectedArUcoMarker_world():
+    def __init__(self, list_of_stereo_point_pairs_obj_1marker, id):
+        self.id = id
+        self.verts = [list_of_stereo_point_pairs_obj_1marker[i].coor_world_tuple for i in range(4)]
+        self.edges = [(0, 1), (1, 2), (2, 3), (3, 0)]
+        self.faces = [(0, 1, 2, 3)]
+        self.surface = self.generate_surface()
+        self.marker_size = None
+        self.av_edge_length = None
+        self.rescale_factor = None
+    def generate_surface(self):
+        view_layer = bpy.context.view_layer
+        mesh = bpy.data.meshes.new('referentPlane')
+        mesh.from_pydata(self.verts, self.edges, self.faces)
+        mesh.update()
+        referencePlane = bpy.data.objects.new('surface_marker_{}'.format(self.id), mesh)
+        view_layer.active_layer_collection.collection.objects.link(referencePlane)
+        return 'surface_marker_{}'.format(self.id)
+"""
+for id in common_ids:
+    exec('DetectedAruco_id_{} = DetectedArUcoMarker_world(allMarkers[id], id)'.format(id))
+"""
 def preprocess(img1, img2):
     if (img1.ndim == 3):
         img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
@@ -431,8 +514,8 @@ def addLightSources(coordinates, Numbers):
 def render_through_camera(camera):
     scene = bpy.context.scene
     bpy.context.scene.cycles.samples = 1
-    scene.render.resolution_x = 1620
-    scene.render.resolution_y = 1080
+    scene.render.resolution_x = 2430
+    scene.render.resolution_y = 1620
     scene.render.resolution_percentage = 100
     scene.render.use_border = False
     if isinstance(camera, dict):

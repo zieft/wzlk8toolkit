@@ -75,9 +75,9 @@ for camera in cameraList:
                 best_camera_angle = camera['name']
                 aruco_info['corners'] = corners
                 aruco_info['ids'] = ids
-                co_corners, co_ids = detect_co_image(best_camera_angle)
-                if len(co_ids) != len(ids):
-                    numbers_of_markers_detected -= 1
+                # co_corners, co_ids = detect_co_image(best_camera_angle)
+                # if len(ids)-len(co_ids) > 0:
+                #     numbers_of_markers_detected -= 1
             # for i in range(len(ids)):
             #     c = corners[i][0]
             #     plt.plot([c[:, 0].mean()], [c[:, 1].mean()], label="id={0}".format(ids[i]))
@@ -94,7 +94,8 @@ bpy.ops.object.select_all(action='DESELECT')
 best_camera_angle_co = add_co_camera(best_camera_angle)
 render_through_camera(best_camera_angle_co)
 co_img = readImageBIN(work_dir+'{}.png'.format(best_camera_angle_co))
-detect_save_aruco_info_image(best_camera_angle_co, co_img)
+corners_co, ids_co, _ = detect_save_aruco_info_image(best_camera_angle_co, co_img)
+aruco_info_co = {'corners': corners_co, 'ids':ids_co}
 
 
 # Step 7: Calculate the coordinates of the markers
@@ -126,10 +127,18 @@ plt.savefig(work_dir+'z_disparity_map.png', dpi=1000)
 points_3d = cv2.reprojectImageTo3D(disp, Q)
 points_3d[:,:,1:3] = -points_3d[:,:, 1:3] # y, z direction in OpenCV and Blender are different
 
+## New algrithm
+aruco_info_better = better_aruco_info(aruco_info)
+aruco_info_co_better = better_aruco_info(aruco_info_co)
 
-bpy.data.objects[best_camera_angle].location + points_3d[680,703,:]
+aruco_info_common, aruco_info_co_common, common_ids = detected_markers_common(aruco_info_better, aruco_info_co_better)
 
+allMarkers = generate_dict_of_stereo_point_pairs_obj_allMarker(aruco_info_common, aruco_info_co_common, common_ids ,stereo_config)
 
+list_detected_markers_obj = []
+for id in common_ids:
+    exec('DetectedAruco_id_{} = DetectedArUcoMarker_world(allMarkers[id], id)'.format(id))
+    exec('list_detected_markers_obj.append(DetectedAruco_id_{})'.format(id))
 
 
 # for area in bpy.context.screen.areas:
