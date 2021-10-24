@@ -64,10 +64,6 @@ aruco_info = {}
 for camera in cameraList:
     img = readImageBIN(work_dir+'{}.png'.format(camera['name']))
     try:
-        # corners, ids, rejectedImgPoints = aruco.detectMarkers(img, aruco_dict, parameters=aruco_parameters)
-        # frame_markers = aruco.drawDetectedMarkers(img.copy(), corners, ids)
-        # plt.figure()
-        # plt.imshow(frame_markers)
         corners, ids, _ = detect_save_aruco_info_image(camera, img)
         if ids is not None:
             if len(ids) > numbers_of_markers_detected:
@@ -75,15 +71,6 @@ for camera in cameraList:
                 best_camera_angle = camera['name']
                 aruco_info['corners'] = corners
                 aruco_info['ids'] = ids
-                # co_corners, co_ids = detect_co_image(best_camera_angle)
-                # if len(ids)-len(co_ids) > 0:
-                #     numbers_of_markers_detected -= 1
-            # for i in range(len(ids)):
-            #     c = corners[i][0]
-            #     plt.plot([c[:, 0].mean()], [c[:, 1].mean()], label="id={0}".format(ids[i]))
-            # plt.legend()
-            # plt.savefig(work_dir+'detected_{}.png'.format(camera['name']), dpi=1000)
-            # plt.show()
     except cv2.error:
         pass
 
@@ -108,7 +95,6 @@ stereo_config = stereoCamera(best_camera_angle, best_camera_angle_co)
 ## Stereo Rectify
 map1x, map1y, map2x, map2y, Q, cameraRecMat = getRectifyTransform(height, width, stereo_config)
 iml_rectified, imr_rectified = rectifyImage(iml, imr, map1x, map1y, map2x, map2y)
-print(Q)
 
 line = draw_line(iml_rectified, imr_rectified)
 plt.figure()
@@ -133,7 +119,7 @@ aruco_info_co_better = better_aruco_info(aruco_info_co)
 
 aruco_info_common, aruco_info_co_common, common_ids = detected_markers_common(aruco_info_better, aruco_info_co_better)
 
-allMarkers = generate_dict_of_stereo_point_pairs_obj_allMarker(aruco_info_common, aruco_info_co_common, common_ids ,stereo_config)
+allMarkers, allCorners = generate_dict_of_stereo_point_pairs_obj_allMarker(aruco_info_common, aruco_info_co_common, common_ids ,stereo_config)
 
 list_detected_markers_obj = []
 for id in common_ids:
@@ -141,17 +127,81 @@ for id in common_ids:
     exec('list_detected_markers_obj.append(DetectedAruco_id_{})'.format(id))
 
 
-# for area in bpy.context.screen.areas:
-#     if area.type == 'VIEW_3D':
-#         ctx = bpy.context.copy()
-#         ctx['area'] = area
-#         ctx['region'] = area.regions[-1]
-#         # TODO: select camera
-#         bpy.ops.view3d.view_selected(ctx)
-#         bpy.ops.view3d.snap_cursor_to_selected(ctx)
-#
-#
-# for i in len(aruco_info['ids']):
-#     u, v = tuple(aruco_info['corners'][i][0][0].astype(int))
-#     coordinate_of_uv = tuple(points_3d[u, v, :])
-#
+verts, edges, faces = plane_from_all_corners(allCorners)
+surfaceName = addSurface(verts, edges, faces, surfaceName='reference')
+
+for i in cameraList:
+    bpy.data.cameras.remove(bpy.data.cameras[i['name']])
+
+## select reference surface and create orientation
+bpy.context.scene.objects["reference"].select_set(True)
+bpy.context.view_layer.objects.active = bpy.context.scene.objects["reference"]
+bpy.ops.object.editmode_toggle()
+bpy.ops.transform.create_orientation(name="Reference", overwrite=True)
+
+## toggle edit mode and change Transformation Orientation to the custom orientation('Reference')
+bpy.ops.object.editmode_toggle()
+bpy.context.scene.transform_orientation_slots[0].type = 'Reference'
+
+## Align local coordinate system of textruedMesh to the custom orientation
+bpy.context.scene.objects["texturedMesh"].select_set(True)
+bpy.context.scene.tool_settings.use_transform_data_origin = True
+bpy.ops.transform.transform(mode='ALIGN', orient_type='Reference')
+bpy.context.scene.tool_settings.use_transform_data_origin = False
+
+## Eliminate initial orientation
+bpy.ops.object.rotation_clear(clear_delta=False)
+
+bpy.ops.object.select_all(action='DESELECT')
+bpy.context.scene.objects["reference"].select_set(True)
+bpy.ops.object.delete()
+
+## Rescale
+bpy.context.scene.objects["texturedMesh"].select_set(True)
+rescale_factor = 0
+for i in list_detected_markers_obj:
+    rescale_factor += i.rescale_factor
+
+rescale_factor = rescale_factor / len(list_detected_markers_obj)
+bpy.ops.transform.resize(value=(rescale_factor, rescale_factor, rescale_factor))
+bpy.ops.object.select_all(action='DESELECT')
+
+
+## Verify direction
+view_layer = bpy.context.view_layer
+camera_data_verify = bpy.data.cameras.new(name='verifyCamera')
+camera_object_verify = bpy.data.objects.new(name='verifyCamera', object_data=camera_data_verify)
+view_layer.active_layer_collection.collection.objects.link(camera_object_verify)
+camera_object_verify.location = (0, 0, 1)
+render_through_camera('verifyCamera')
+verifyCamera_img = readImageBIN(work_dir+'verifyCamera.png')
+verify_corners, verify_ids, _ = detect_save_aruco_info_image('verifyCamera', verifyCamera_img)
+if verify_corners ==[]:
+    bpy.context.scene.objects["texturedMesh"].select_set(True)
+    bpy.ops.transform.rotate(value=math.pi, orient_axis='Y')
+
+
+## delete unnesessary infomation
+bpy.context.view_layer.objects.active = bpy.context.scene.objects["texturedMesh"]
+obj = bpy.context.active_object
+bpy.ops.object.mode_set(mode='OBJECT')
+me = bpy.context.active_object.data
+for face in me.polygons:
+    face.select = False
+
+for edge in me.edges:
+    edge.select = False
+
+for vert in me.vertices:
+    vert.select = False
+
+for vert in me.vertices:
+    if (sqrt(vert.co.x ** 2 + vert.co.y ** 2) > 0.50) or ((vert.co.z < -0.90) or (vert.co.z > 0.24)):
+        vert.select = True
+
+bpy.ops.object.select_all(action='DESELECT')
+debug_vertices(me.vertices)
+
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.delete(type='VERT')
+bpy.ops.object.mode_set(mode='OBJECT')
