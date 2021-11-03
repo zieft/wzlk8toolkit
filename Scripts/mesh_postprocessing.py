@@ -47,24 +47,24 @@ bpy.ops.object.origin_set(type='GEOMETRY_ORIGIN', center='MEDIAN')
 
 
 # Step 1: Define a sphere
-cameraCoordinates, cameraNumbers = generateDomeCoor(10, 10, 4)
-lightCoordinates, lightNumbers = generateDomeCoor(3, 3, 1)
+cameraCoordinates, cameraNumbers = BlenderCameraOperation.generateDomeCoor(10, 10, 4)
+lightCoordinates, lightNumbers = BlenderCameraOperation.generateDomeCoor(3, 3, 1)
 
 # Step 2: place a camera on the sphere and track the world origin
-cameraList = addCamera(cameraCoordinates, cameraNumbers)
-addLightSources(lightCoordinates, lightNumbers)
+cameraList = BlenderCameraOperation.addCamera(cameraCoordinates, cameraNumbers)
+BlenderCameraOperation.addLightSources(lightCoordinates, lightNumbers)
 
 # Step 3-5:
 for camera in cameraList:
-    render_through_camera(camera)
+    BlenderCameraOperation.render_through_camera(camera)
 
 numbers_of_markers_detected = 0
 best_camera_angle = ''
 aruco_info = {}
 for camera in cameraList:
-    img = readImageBIN(work_dir+'{}.png'.format(camera['name']))
+    img = ImageTransformProcess.readImageBIN(work_dir+'{}.png'.format(camera['name']))
     try:
-        corners, ids, _ = detect_save_aruco_info_image(camera, img)
+        corners, ids, _ = ArucoInfoDetection.detect_save_aruco_info_image(camera, img)
         if ids is not None:
             if len(ids) > numbers_of_markers_detected:
                 numbers_of_markers_detected = len(ids)
@@ -78,33 +78,33 @@ print('Selected Camera: {}'.format(best_camera_angle))
 
 # Step 6: Move the camera slightly to build a stereo pair
 bpy.ops.object.select_all(action='DESELECT')
-best_camera_angle_co = add_co_camera(best_camera_angle)
-render_through_camera(best_camera_angle_co)
-co_img = readImageBIN(work_dir+'{}.png'.format(best_camera_angle_co))
-corners_co, ids_co, _ = detect_save_aruco_info_image(best_camera_angle_co, co_img)
+best_camera_angle_co = BlenderCameraOperation.add_co_camera(best_camera_angle)
+BlenderCameraOperation.render_through_camera(best_camera_angle_co)
+co_img = ImageTransformProcess.readImageBIN(work_dir+'{}.png'.format(best_camera_angle_co))
+corners_co, ids_co, _ = ArucoInfoDetection.detect_save_aruco_info_image(best_camera_angle_co, co_img)
 aruco_info_co = {'corners': corners_co, 'ids':ids_co}
 
 
 # Step 7: Calculate the coordinates of the markers
-iml = readImageBIN(work_dir+'{}.png'.format(best_camera_angle), BIN=False)
-imr = readImageBIN(work_dir+'{}.png'.format(best_camera_angle_co), BIN=False)
+iml = ImageTransformProcess.readImageBIN(work_dir+'{}.png'.format(best_camera_angle), BIN=False)
+imr = ImageTransformProcess.readImageBIN(work_dir+'{}.png'.format(best_camera_angle_co), BIN=False)
 height, width = iml.shape[0:2]
 
 stereo_config = stereoCamera(best_camera_angle, best_camera_angle_co)
 
 ## Stereo Rectify
-map1x, map1y, map2x, map2y, Q, cameraRecMat = getRectifyTransform(height, width, stereo_config)
-iml_rectified, imr_rectified = rectifyImage(iml, imr, map1x, map1y, map2x, map2y)
+map1x, map1y, map2x, map2y, Q, cameraRecMat = ImageTransformProcess.getRectifyTransform(height, width, stereo_config)
+iml_rectified, imr_rectified = ImageTransformProcess.rectifyImage(iml, imr, map1x, map1y, map2x, map2y)
 
-line = draw_line(iml_rectified, imr_rectified)
+line = ImageTransformProcess.draw_line(iml_rectified, imr_rectified)
 plt.figure()
 plt.imshow(line)
 plt.savefig(work_dir+'validation.png', dpi=1000)
 
 
 ## Stereo Match
-iml_, imr_ = preprocess(iml, imr)
-disp, _ = stereoMatchSGBM(iml_rectified, imr_rectified, True)
+iml_, imr_ = ImageTransformProcess.preprocess(iml, imr)
+disp, _ = ImageTransformProcess.stereoMatchSGBM(iml_rectified, imr_rectified, True)
 plt.figure()
 plt.imshow(disp)
 plt.savefig(work_dir+'z_disparity_map.png', dpi=1000)
@@ -114,12 +114,12 @@ points_3d = cv2.reprojectImageTo3D(disp, Q)
 points_3d[:,:,1:3] = -points_3d[:,:, 1:3] # y, z direction in OpenCV and Blender are different
 
 ## New algrithm
-aruco_info_better = better_aruco_info(aruco_info)
-aruco_info_co_better = better_aruco_info(aruco_info_co)
+aruco_info_better = ArucoInfoDetection.better_aruco_info(aruco_info)
+aruco_info_co_better = ArucoInfoDetection.better_aruco_info(aruco_info_co)
 
-aruco_info_common, aruco_info_co_common, common_ids = detected_markers_common(aruco_info_better, aruco_info_co_better)
+aruco_info_common, aruco_info_co_common, common_ids = DetectedArUcoMarker_world.detected_markers_common(aruco_info_better, aruco_info_co_better)
 
-allMarkers, allCorners = generate_dict_of_stereo_point_pairs_obj_allMarker(aruco_info_common, aruco_info_co_common, common_ids ,stereo_config)
+allMarkers, allCorners = StereoPointObject.generate_dict_of_stereo_point_pairs_obj_allMarker(aruco_info_common, aruco_info_co_common, common_ids ,stereo_config)
 
 list_detected_markers_obj = []
 for id in common_ids:
@@ -127,8 +127,8 @@ for id in common_ids:
     exec('list_detected_markers_obj.append(DetectedAruco_id_{})'.format(id))
 
 
-verts, edges, faces = plane_from_all_corners(allCorners)
-surfaceName = addSurface(verts, edges, faces, surfaceName='reference')
+verts, edges, faces = DetectedArUcoMarker_world.plane_from_all_corners(allCorners)
+surfaceName = StereoPointObject.addSurface(verts, edges, faces, surfaceName='reference')
 
 for i in cameraList:
     bpy.data.cameras.remove(bpy.data.cameras[i['name']])
@@ -173,13 +173,13 @@ camera_data_verify = bpy.data.cameras.new(name='verifyCamera')
 camera_object_verify = bpy.data.objects.new(name='verifyCamera', object_data=camera_data_verify)
 view_layer.active_layer_collection.collection.objects.link(camera_object_verify)
 camera_object_verify.location = (0, 0, 1)
-render_through_camera('verifyCamera')
-verifyCamera_img = readImageBIN(work_dir+'verifyCamera.png')
-verify_corners, verify_ids, _ = detect_save_aruco_info_image('verifyCamera', verifyCamera_img)
+BlenderCameraOperation.render_through_camera('verifyCamera')
+verifyCamera_img = ImageTransformProcess.readImageBIN(work_dir+'verifyCamera.png')
+verify_corners, verify_ids, _ = ArucoInfoDetection.detect_save_aruco_info_image('verifyCamera', verifyCamera_img)
 if verify_corners ==[]:
     bpy.context.scene.objects["texturedMesh"].select_set(True)
-    bpy.ops.transform.rotate(value=math.pi, orient_axis='Y')
 
+    bpy.ops.transform.rotate(value=math.pi, orient_axis='Y')
 
 ## delete unnesessary infomation
 bpy.context.view_layer.objects.active = bpy.context.scene.objects["texturedMesh"]
@@ -200,7 +200,7 @@ for vert in me.vertices:
         vert.select = True
 
 bpy.ops.object.select_all(action='DESELECT')
-debug_vertices(me.vertices)
+BlenderCameraOperation.debug_vertices(me.vertices)
 
 bpy.ops.object.mode_set(mode='EDIT')
 bpy.ops.mesh.delete(type='VERT')
