@@ -11,7 +11,8 @@ aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
 aruco_parameters = aruco.DetectorParameters_create()
 
 camera_baseline_translation = (0.5, 0, 0) # 0.5 meter along x axis
-work_dir = r'C:\Users\zieft\Desktop\test1\renders\\'
+# work_dir = r'C:\Users\zieft\Desktop\test1\renders\\'
+work_dir = '/tmp/blenderOutput/renders/'
 a = 1
 
 class CameraMatrixFromBlender:
@@ -83,7 +84,7 @@ class CameraMatrixFromBlender:
         return K @ RT
 
 
-class cameraObject():
+class cameraObject:
     def __init__(self, cameraName):
         self.cameraName = cameraName
         self.location_world = np.array(bpy.data.objects[cameraName].location)
@@ -164,7 +165,7 @@ class ArucoInfoDetection:
         return better
 
 
-class stereoCamera(object):
+class stereoCamera:
     def __init__(self, camera_left, camera_right):
         self.T_world2cam_l = np.array(bpy.data.objects[camera_left].matrix_world)[:3, 3].reshape((1, 3))
         self.R_world2cam_l = np.array(bpy.data.objects[camera_left].matrix_world)[:3, :3]
@@ -182,7 +183,7 @@ class stereoCamera(object):
         self.baseline = camera_baseline_translation[0] # meter
 
 
-class StereoPointObject():
+class StereoPointObject:
     def __init__(self, aruco_info_corner_left, aruco_info_corner_right, stereo_camera_obj):
         """
         Same physical point presented in a stereo camera set.
@@ -358,7 +359,7 @@ class StereoPointObject():
         return surfaceName
 
 
-class DetectedArUcoMarker_world():
+class DetectedArUcoMarker_world:
     def __init__(self, list_of_stereo_point_pairs_obj_1marker, id):
         """
 
@@ -788,6 +789,7 @@ class BlenderCameraOperation:
         scene.render.resolution_x = resolution[0]
         scene.render.resolution_y = resolution[1]
         scene.render.resolution_percentage = resolution_percentage
+        scene.render.engine = 'CYCLES' # BLENDER_EEVEE engine requairs a display, can't running inside cluster
         scene.render.use_border = False
 
         if isinstance(camera, dict):

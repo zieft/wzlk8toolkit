@@ -5,11 +5,12 @@ import bpy
 import sys
 import os
 sys.path.append(os.path.curdir)
-os.chdir(r'C:\Users\zieft\PycharmProjects\wzlk8toolkit')
+# os.chdir(r'C:\Users\zieft\PycharmProjects\wzlk8toolkit')  # for development in windows
+os.chdir('/opt/scripts/wzlk8toolkit')   # for deployment in cluster / docker
 from core.bpycore import *
 
 
-## Delete initial objects.
+print('## Delete initial objects.')
 if "Cube" in bpy.data.meshes:
     mesh = bpy.data.meshes["Cube"]
     print("removing mesh", mesh)
@@ -25,7 +26,7 @@ if "Light" in bpy.data.lights:
     print("removing light", light)
     bpy.data.lights.remove(light)
 
-## Change ViewPoint Shading into 'Rendered'.
+print("## Change ViewPoint Shading into 'Rendered'.")
 for area in bpy.context.screen.areas:
     if area.type == 'VIEW_3D':
         for space in area.spaces:
@@ -35,26 +36,27 @@ for area in bpy.context.screen.areas:
 
 bpy.ops.object.empty_add(type='PLAIN_AXES', location=(0, 0, 0))
 
-## import .obj file
-filePath = r"C:\Users\zieft\Desktop\test1\texturedMesh.obj"
+print('## import .obj file')
+# filePath = r"C:\Users\zieft\Desktop\test1\texturedMesh.obj"  # for development in windows
+filePath = '/opt/examplesfortest/aruco1/texturedMesh.obj'  # for test in cluster / docker
 bpy.ops.import_scene.obj(filepath=filePath)
 
-## set texturedMesh to the world origin
+print('## set texturedMesh to the world origin')
 objectToSelect = bpy.data.objects['texturedMesh']
 objectToSelect.select_set(True)
 bpy.context.view_layer.objects.active = objectToSelect
 bpy.ops.object.origin_set(type='GEOMETRY_ORIGIN', center='MEDIAN')
 
 
-# Step 1: Define a sphere
+print('# Step 1: Define a sphere')
 cameraCoordinates, cameraNumbers = BlenderCameraOperation.generateDomeCoor(10, 10, 4)
 lightCoordinates, lightNumbers = BlenderCameraOperation.generateDomeCoor(3, 3, 1)
 
-# Step 2: place a camera on the sphere and track the world origin
+print('# Step 2: place a camera on the sphere and track the world origin')
 cameraList = BlenderCameraOperation.addCamera(cameraCoordinates, cameraNumbers)
 BlenderCameraOperation.addLightSources(lightCoordinates, lightNumbers)
 
-# Step 3-5:
+print('# Step 3-5:')
 for camera in cameraList:
     BlenderCameraOperation.render_through_camera(camera)
 
@@ -76,7 +78,7 @@ for camera in cameraList:
 
 print('Selected Camera: {}'.format(best_camera_angle))
 
-# Step 6: Move the camera slightly to build a stereo pair
+print('# Step 6: Move the camera slightly to build a stereo pair')
 bpy.ops.object.select_all(action='DESELECT')
 best_camera_angle_co = BlenderCameraOperation.add_co_camera(best_camera_angle)
 BlenderCameraOperation.render_through_camera(best_camera_angle_co)
@@ -85,7 +87,7 @@ corners_co, ids_co, _ = ArucoInfoDetection.detect_save_aruco_info_image(best_cam
 aruco_info_co = {'corners': corners_co, 'ids':ids_co}
 
 
-# Step 7: Calculate the coordinates of the markers
+print('# Step 7: Calculate the coordinates of the markers')
 iml = ImageTransformProcess.readImageBIN(work_dir+'{}.png'.format(best_camera_angle), BIN=False)
 imr = ImageTransformProcess.readImageBIN(work_dir+'{}.png'.format(best_camera_angle_co), BIN=False)
 height, width = iml.shape[0:2]
