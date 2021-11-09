@@ -180,7 +180,6 @@ verifyCamera_img = ImageTransformProcess.readImageBIN(work_dir+'verifyCamera.png
 verify_corners, verify_ids, _ = ArucoInfoDetection.detect_save_aruco_info_image('verifyCamera', verifyCamera_img)
 if verify_corners ==[]:
     bpy.context.scene.objects["texturedMesh"].select_set(True)
-
     bpy.ops.transform.rotate(value=math.pi, orient_axis='Y')
 
 ## delete unnesessary infomation
@@ -207,3 +206,8 @@ BlenderCameraOperation.debug_vertices(me.vertices)
 bpy.ops.object.mode_set(mode='EDIT')
 bpy.ops.mesh.delete(type='VERT')
 bpy.ops.object.mode_set(mode='OBJECT')
+
+
+# output_dir = r"C:\Users\zieft\Desktop\test1\output_mesh.obj" # for development in windows
+output_dir = "/opt/examplesfortest/aruco1/mesh_postprocessed.obj"
+bpy.ops.export_scene.obj(filepath=output_dir, axis_forward='-Z', axis_up='Y')

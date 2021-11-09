@@ -11,8 +11,8 @@ aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
 aruco_parameters = aruco.DetectorParameters_create()
 
 camera_baseline_translation = (0.5, 0, 0) # 0.5 meter along x axis
-# work_dir = r'C:\Users\zieft\Desktop\test1\renders\\'
-work_dir = '/tmp/blenderOutput/renders/'
+work_dir = r'C:\Users\zieft\Desktop\test1\renders\\'
+# work_dir = '/tmp/blenderOutput/renders/'
 a = 1
 
 class CameraMatrixFromBlender:
@@ -776,13 +776,13 @@ class BlenderCameraOperation:
             bpy.context.object.constraints["Track To"].up_axis = 'UP_Y'
 
     @staticmethod
-    def render_through_camera(camera, resolution=(2430, 1620), resolution_percentage=100, samples=1):
+    def render_through_camera(camera, resolution=(2430, 1620), resolution_percentage=100, samples=20):
         """
         Render a frame through a particular camera, and save the image
         :param camera: dict OR str, dict of camera info or str of camera name
         :param resolution: resolution of the rendered picture
         :param resolution_percentage: 100 recommended
-        :param samples: how many samples need to be rendered.
+        :param samples: the larger the better render quality, but also longer render time, recommend: 15-20
         """
         scene = bpy.context.scene
         bpy.context.scene.cycles.samples = samples
@@ -790,6 +790,7 @@ class BlenderCameraOperation:
         scene.render.resolution_y = resolution[1]
         scene.render.resolution_percentage = resolution_percentage
         scene.render.engine = 'CYCLES' # BLENDER_EEVEE engine requairs a display, can't running inside cluster
+        # scene.view_layers[0].cycles.use_denoising = True  # super slow & bad quality
         scene.render.use_border = False
 
         if isinstance(camera, dict):

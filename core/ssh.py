@@ -118,10 +118,10 @@ def k8_3s3download(session, key1, key2, folder):
 def mcUpload(session, key1, key2, pathJob, bucket, pathS3):
     # cmd = './mc cp --attr Cache-Control=max-age=90000,min-fresh=9000;key1={};key2={} --recursive myminio/{} s3/{}/fromCluster/{}'.format(key, secretKey, pathJob, bucket, pathS3)
     cmd = './mc cp --attr Cache-Control=max-age=90000,min-fresh=9000\;key1={}\;key2={} --recursive myminio/{} s3/{}/outputsFromCluster/{}_out'.format(key1, key2, pathJob, bucket, pathS3)
+    # ./mc cp --attr Cache-Control=max-age=90000,min-fresh=9000\;key1=4G8F4PBHBLNX7ZOW8N5P\;key2=N7u4Xwl6UUf6cV5y2G0KxWse6MC24VHjNHm8f0Lr --recursive myminio/test123 s3/ggr-bucket-cbf77f1e-eea2-4b4a-88b2-ae787daf3f42/outputsFromCluster/test123_out
     # print(cmd)
     stdin, stdout, stderr = session.exec_command(cmd)
     print(stdout.read().decode())
-
 
 
 def kubectlApply(session, yamlPath):
