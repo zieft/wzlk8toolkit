@@ -11,8 +11,8 @@ aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
 aruco_parameters = aruco.DetectorParameters_create()
 
 camera_baseline_translation = (0.5, 0, 0) # 0.5 meter along x axis
-work_dir = r'C:\Users\zieft\Desktop\test1\renders\\'
-# work_dir = '/tmp/blenderOutput/renders/'
+# work_dir = r'C:\Users\zieft\Desktop\test1\renders\\'
+work_dir = '/storage/blenderOutput/renders/'
 a = 1
 
 class CameraMatrixFromBlender:
