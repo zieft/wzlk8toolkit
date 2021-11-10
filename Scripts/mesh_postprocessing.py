@@ -1,13 +1,18 @@
 # import pydevd
 # pydevd.settrace('127.0.0.1', port=1090, stdoutToServer=True, stderrToServer=True)
+import platform
+if platform.system().lower() == 'windows':
+    script_position = r'C:\Users\zieft\PycharmProjects\wzlk8toolkit'
+else:
+    script_position = '/opt/scripts/wzlk8toolkit'
 
 import bpy
 import sys
 import os
 sys.path.append(os.path.curdir)
-# os.chdir(r'C:\Users\zieft\PycharmProjects\wzlk8toolkit')  # for development in windows
-os.chdir('/opt/scripts/wzlk8toolkit')   # for deployment in cluster / docker
+os.chdir(script_position)
 from core.bpycore import *
+
 
 
 print('## Delete initial objects.')
@@ -37,8 +42,7 @@ for area in bpy.context.screen.areas:
 bpy.ops.object.empty_add(type='PLAIN_AXES', location=(0, 0, 0))
 
 print('## import .obj file')
-# filePath = r"C:\Users\zieft\Desktop\test1\texturedMesh.obj"  # for development in windows
-filePath = '/opt/examplesfortest/aruco1/texturedMesh.obj'  # for test in cluster / docker
+
 bpy.ops.import_scene.obj(filepath=filePath)
 
 print('## set texturedMesh to the world origin')
@@ -94,7 +98,7 @@ height, width = iml.shape[0:2]
 
 stereo_config = stereoCamera(best_camera_angle, best_camera_angle_co)
 
-## Stereo Rectify
+print('## Stereo Rectify')
 map1x, map1y, map2x, map2y, Q, cameraRecMat = ImageTransformProcess.getRectifyTransform(height, width, stereo_config)
 iml_rectified, imr_rectified = ImageTransformProcess.rectifyImage(iml, imr, map1x, map1y, map2x, map2y)
 
@@ -104,14 +108,14 @@ plt.imshow(line)
 plt.savefig(work_dir+'validation.png', dpi=1000)
 
 
-## Stereo Match
+print('## Stereo Match')
 iml_, imr_ = ImageTransformProcess.preprocess(iml, imr)
 disp, _ = ImageTransformProcess.stereoMatchSGBM(iml_rectified, imr_rectified, True)
 plt.figure()
 plt.imshow(disp)
 plt.savefig(work_dir+'z_disparity_map.png', dpi=1000)
 
-## Reproject image to 3D World
+print('## Reproject image to 3D World')
 points_3d = cv2.reprojectImageTo3D(disp, Q)
 points_3d[:,:,1:3] = -points_3d[:,:, 1:3] # y, z direction in OpenCV and Blender are different
 
@@ -135,30 +139,31 @@ surfaceName = StereoPointObject.addSurface(verts, edges, faces, surfaceName='ref
 for i in cameraList:
     bpy.data.cameras.remove(bpy.data.cameras[i['name']])
 
-## select reference surface and create orientation
+print('## select reference surface and create orientation')
+
 bpy.context.scene.objects["reference"].select_set(True)
 bpy.context.view_layer.objects.active = bpy.context.scene.objects["reference"]
 bpy.ops.object.editmode_toggle()
-bpy.ops.transform.create_orientation(name="Reference", overwrite=True)
+bpy.ops.transform.create_orientation(name="Reference",use_view=True, use=True)
 
-## toggle edit mode and change Transformation Orientation to the custom orientation('Reference')
+print("## toggle edit mode and change Transformation Orientation to the custom orientation('Reference')")
 bpy.ops.object.editmode_toggle()
 bpy.context.scene.transform_orientation_slots[0].type = 'Reference'
 
-## Align local coordinate system of textruedMesh to the custom orientation
+print('## Align local coordinate system of texturedMesh to the custom orientation')
 bpy.context.scene.objects["texturedMesh"].select_set(True)
 bpy.context.scene.tool_settings.use_transform_data_origin = True
 bpy.ops.transform.transform(mode='ALIGN', orient_type='Reference')
 bpy.context.scene.tool_settings.use_transform_data_origin = False
 
-## Eliminate initial orientation
+print('## Eliminate initial orientation')
 bpy.ops.object.rotation_clear(clear_delta=False)
 
 bpy.ops.object.select_all(action='DESELECT')
 bpy.context.scene.objects["reference"].select_set(True)
 bpy.ops.object.delete()
 
-## Rescale
+print('## Rescale')
 bpy.context.scene.objects["texturedMesh"].select_set(True)
 rescale_factor = 0
 for i in list_detected_markers_obj:
@@ -169,7 +174,7 @@ bpy.ops.transform.resize(value=(rescale_factor, rescale_factor, rescale_factor))
 bpy.ops.object.select_all(action='DESELECT')
 
 
-## Verify direction
+print('## Verify direction')
 view_layer = bpy.context.view_layer
 camera_data_verify = bpy.data.cameras.new(name='verifyCamera')
 camera_object_verify = bpy.data.objects.new(name='verifyCamera', object_data=camera_data_verify)
@@ -182,7 +187,7 @@ if verify_corners ==[]:
     bpy.context.scene.objects["texturedMesh"].select_set(True)
     bpy.ops.transform.rotate(value=math.pi, orient_axis='Y')
 
-## delete unnesessary infomation
+print('## delete unnesessary infomation')
 bpy.context.view_layer.objects.active = bpy.context.scene.objects["texturedMesh"]
 obj = bpy.context.active_object
 bpy.ops.object.mode_set(mode='OBJECT')
@@ -207,7 +212,7 @@ bpy.ops.object.mode_set(mode='EDIT')
 bpy.ops.mesh.delete(type='VERT')
 bpy.ops.object.mode_set(mode='OBJECT')
 
+print('## Export wavefront obj file.')
 
-# output_dir = r"C:\Users\zieft\Desktop\test1\output_mesh.obj" # for development in windows
-output_dir = "/opt/examplesfortest/aruco1/mesh_postprocessed.obj"
+
 bpy.ops.export_scene.obj(filepath=output_dir, axis_forward='-Z', axis_up='Y')

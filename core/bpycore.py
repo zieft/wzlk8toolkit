@@ -6,13 +6,22 @@ from mathutils import Matrix
 import cv2
 from cv2 import aruco
 import matplotlib.pyplot as plt
+import platform
 
 aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
 aruco_parameters = aruco.DetectorParameters_create()
 
 camera_baseline_translation = (0.5, 0, 0) # 0.5 meter along x axis
-# work_dir = r'C:\Users\zieft\Desktop\test1\renders\\'
-work_dir = '/storage/blenderOutput/renders/'
+
+if platform.system().lower() == 'windows':
+    work_dir = r'C:\Users\zieft\Desktop\test1\renders\\'
+    filePath = r"C:\Users\zieft\Desktop\test1\texturedMesh.obj"  # for development in windows
+    output_dir = r"C:\Users\zieft\Desktop\test1\output_mesh.obj"  # for development in windows
+else:
+    filePath = '/opt/examplesfortest/aruco1/texturedMesh.obj'  # for test in cluster / docker
+    work_dir = '/storage/blenderOutput/renders/'
+    output_dir = "/opt/examplesfortest/aruco1/mesh_postprocessed.obj"
+
 a = 1
 
 class CameraMatrixFromBlender:
@@ -133,8 +142,10 @@ class ArucoInfoDetection:
                 plt.legend()
                 if isinstance(camera, dict):
                     plt.savefig(work_dir + 'detected_{}.png'.format(camera['name']), dpi=1000)
+                    print('marker(s) detected from', camera['name'])
                 elif isinstance(camera, str):
                     plt.savefig(work_dir + 'detected_{}.png'.format(camera), dpi=1000)
+                    print('marker(s) detected from', camera)
                 plt.show()
                 plt.close()
 
@@ -397,7 +408,7 @@ class DetectedArUcoMarker_world:
 
     def __generate_surface(self):
         """
-        Debug only,gererate a (same size) surface to cover up the given(detected) marker.
+        Debug only, generate a (same size) surface to cover up the given(detected) marker.
         :return: str, surface name of the surface object created in Blender.
         """
         view_layer = bpy.context.view_layer
@@ -776,7 +787,7 @@ class BlenderCameraOperation:
             bpy.context.object.constraints["Track To"].up_axis = 'UP_Y'
 
     @staticmethod
-    def render_through_camera(camera, resolution=(2430, 1620), resolution_percentage=100, samples=20):
+    def render_through_camera(camera, resolution=(2430, 1620), resolution_percentage=100, samples=10):
         """
         Render a frame through a particular camera, and save the image
         :param camera: dict OR str, dict of camera info or str of camera name
