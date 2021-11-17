@@ -144,7 +144,10 @@ print('## select reference surface and create orientation')
 bpy.context.scene.objects["reference"].select_set(True)
 bpy.context.view_layer.objects.active = bpy.context.scene.objects["reference"]
 bpy.ops.object.editmode_toggle()
-bpy.ops.transform.create_orientation(name="Reference",use_view=True, use=True)
+areas = [area for area in bpy.context.window.screen.areas if area.type == 'VIEW_3D']
+if areas:
+    override = {'area' : areas[0]}
+    bpy.ops.transform.create_orientation(override, name="Reference", use=True)
 
 print("## toggle edit mode and change Transformation Orientation to the custom orientation('Reference')")
 bpy.ops.object.editmode_toggle()
