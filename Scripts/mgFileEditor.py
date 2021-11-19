@@ -8,9 +8,9 @@ import json
 
 
 pipelineMgFile = sys.argv[1]
-folder = sys.argv[2]
+dataset_name = sys.argv[2]
 
-generatedMgFileName = '/tmp/{}/generatedMgTemplate.mg'.format(folder)
+generatedMgFileName = '/storage/fromS3/{}/generatedMgTemplate.mg'.format(dataset_name)
 print(generatedMgFileName)
 
 with open(pipelineMgFile) as pipelineFile:

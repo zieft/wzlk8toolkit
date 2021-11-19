@@ -20,11 +20,18 @@ class Wzlk8toolkitMain:
         print('2) Info of existing job.')
         print('3) Exit.')
 
-    def __select_menu(self):
+    def __select_main_menu(self):
         item = input('please select: ')
         if item == '1':
             self.__create_job()
         if item == '2':
+            self.__manager.show_jobs_by_index()
+            self.__manager.select_job()
+            # show list of jobs with index
+            # menu for entry points,
+            # edit detail of yaml file
+            # send kubectl cmd to cluster
+            # copy dataset into persistent volume
             pass
         if item == '3':
             exit()
@@ -32,11 +39,16 @@ class Wzlk8toolkitMain:
     def main(self):
         while True:
             self.__display_main_menu()
-            self.__select_menu()
+            self.__select_main_menu()
 
     def __create_job(self):
         name = input('Please enter job name: ')
         K8marsJobCreator_obj = K8marsJobCreator(name)
+        K8marsJobCreator_obj.write_yaml_file()
+        self.__manager.add_new_job(K8marsJobCreator_obj)
+        # K8marsJobCreator_obj.show_task_menu()
+        # K8marsJobCreator_obj.select_task_menu()
+
 
 
 if __name__ == '__main__':
