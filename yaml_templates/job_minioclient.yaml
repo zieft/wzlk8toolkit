@@ -1,0 +1,16 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: yz-minio-client   #############
+  namespace: ggr
+spec:
+  template:
+    spec:
+      containers:
+      - name: minioclient
+        image: minio/mc:latest
+        command: ['sh', '-c', '--']
+        args: [ "while true; do sleep 30; done;" ]
+      restartPolicy: Never
+  backoffLimit: 4
+          

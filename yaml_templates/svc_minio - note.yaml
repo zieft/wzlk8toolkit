@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-service
+  namespace: ggr
+spec:
+  type: NodePort
+  ports:
+    - nodeport: 31587 #向外网暴露的端口，测试可不可在windows里用mc访问
+      port: 9000 #本service暴露出去的port，用于被内部mc访问，并映射到node的31587端口
+      targetPort: 9000 #目标容器内的应用接口，即wzlk8toolkit里面的containerPort
+      protocol: TCP
+  selector:
+    app: minio   

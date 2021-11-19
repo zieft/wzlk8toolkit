@@ -1,0 +1,34 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ggr-yz-wzlk8toolkit
+  namespace: ggr
+spec:
+  template:
+    metadata:
+      labels:
+        # Label is used as selector in the service.
+        app: minio
+    spec:
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: yz-pvc
+      containers:
+      - name: wzlk8toolkit
+        image: zieft/wzlk8toolkit:v0.3
+        command: ['sh', '-c', 'MINIO_ROOT_USER=admin MINIO_ROOT_PASSWORD=password minio server /storage --console-address ":9001" && mkdir /storage/recieve && sleep 36000']
+        ports:
+        - containerPort: 9000  #port exposed to other container inside the same pod
+        resources:
+          requests:
+            cpu: "8000m"
+            memory: "32Gi"
+          limits:
+            cpu: "16000m"
+            memory: "64Gi"
+        volumeMounts:
+        - name: storage      # must match the volume name, above
+          mountPath: "/storage"
+      restartPolicy: Never
+  backoffLimit: 4
