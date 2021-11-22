@@ -17,7 +17,7 @@ class Wzlk8toolkitMain:
 
     def __display_main_menu(self):
         print('1) Create a new job.')
-        print('2) Info of existing job.')
+        print('2) Existing job.')
         print('3) Exit.')
 
     def __select_main_menu(self):
@@ -33,7 +33,7 @@ class Wzlk8toolkitMain:
             # send kubectl cmd to cluster
             # copy dataset into persistent volume
             pass
-        if item == '3':
+        if item == '3': 
             exit()
 
     def main(self):
@@ -42,7 +42,7 @@ class Wzlk8toolkitMain:
             self.__select_main_menu()
 
     def __create_job(self):
-        name = input('Please enter job name: ')
+        name = input('Please enter [job] name: ')
         K8marsJobCreator_obj = K8marsJobCreator(name)
         K8marsJobCreator_obj.write_yaml_file()
         self.__manager.add_new_job(K8marsJobCreator_obj)
