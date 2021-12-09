@@ -218,7 +218,9 @@ class K8marsJobCreator:
         pod_name = self.name
         image_name = "zieft/wzlk8toolkit:v0.3"
         minio_SVC_name = "minio-svc-" + self.name
-        raw_text.format(pvc_name, pod_name, pvc_name, image_name, cmd, minio_SVC_name)
+        yaml = raw_text.format(pvc_name, pod_name, pvc_name, image_name, cmd, minio_SVC_name)
+
+        return yaml
 
     def __generate_yaml_wzlk8toolkit(self):
         yaml = YamlFileModelWzlk8toolkit()
