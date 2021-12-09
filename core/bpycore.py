@@ -22,8 +22,6 @@ else:
     work_dir = '/storage/blenderOutput/renders/'
     output_dir = "/opt/examplesfortest/aruco1/mesh_postprocessed.obj"
 
-a = 1
-
 class CameraMatrixFromBlender:
     @staticmethod
     def get_calibration_matrix_K_from_blender(camd):
@@ -800,8 +798,8 @@ class BlenderCameraOperation:
         scene.render.resolution_x = resolution[0]
         scene.render.resolution_y = resolution[1]
         scene.render.resolution_percentage = resolution_percentage
-        scene.render.engine = 'CYCLES' # BLENDER_EEVEE engine requairs a display, can't running inside cluster
-        scene.cycles.device = 'GPU' # not suitalbe in Virtual Machine
+#        scene.render.engine = 'CYCLES' # BLENDER_EEVEE engine requairs a display, can't running inside cluster
+#        scene.cycles.device = 'GPU' # not suitalbe in Virtual Machine
         # scene.view_layers[0].cycles.use_denoising = True  # super slow & bad quality
         scene.render.use_border = False
 

@@ -13,8 +13,6 @@ sys.path.append(os.path.curdir)
 os.chdir(script_position)
 from core.bpycore import *
 
-
-
 print('## Delete initial objects.')
 if "Cube" in bpy.data.meshes:
     mesh = bpy.data.meshes["Cube"]

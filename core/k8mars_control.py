@@ -6,7 +6,7 @@ import os
 import re
 sys.path.append('..')
 from wzlk8toolkit import PathInfo
-
+from yaml_templates import yaml_templates
 
 class K8marsJobCreator:
     """
@@ -24,9 +24,11 @@ class K8marsJobCreator:
         self.__data_dir = self.__create_data_dir()
         self.__yaml_file_generated = self.__create_new_yaml_file()
         self.__yaml_pvc = self.__generate_yaml_pvc()
-        self.__yaml_minio_client = YamlFileModelMinioClient()
-        self.__yaml_wzlk8toolkit = self.__generate_yaml_wzlk8toolkit()
-        self.__yaml_minio_server = YamlFileModelMinioService() # TODO: unique minio service port
+        # self.__yaml_minio_client = YamlFileModelMinioClient()
+        self.__yaml_minio_client = self.__set_yaml_minio_client()
+        # self.__yaml_wzlk8toolkit = self.__generate_yaml_wzlk8toolkit()
+        self.__yaml_wzlk8toolkit = self.__set_yaml_wzlk8toolkit()
+        # self.__yaml_minio_server = YamlFileModelMinioService() # TODO: unique minio service port
         # self.__cmd_photogrammetry = CMDPhotogrammetry(self.dataset_name, self.mg_file_name).commands
 
     def __str__(self):
@@ -202,6 +204,22 @@ class K8marsJobCreator:
 
         return yaml
 
+    def __set_yaml_minio_client(self):
+        raw_text = yaml_templates.yaml_minio_client
+
+        return raw_text
+
+    def __set_yaml_wzlk8toolkit(self):
+        raw_text = yaml_templates.yaml_Jobwzlk8toolkit
+        cmd = """
+        ['sh', '-c', 'echo The app is running! && MINIO_ROOT_USER=admin MINIO_ROOT_PASSWORD=password minio server /storage --console-address ":9001" && mkdir /storage/recieve && sleep 36000']
+        """
+        pvc_name = self.pvc_name
+        pod_name = self.name
+        image_name = "zieft/wzlk8toolkit:v0.3"
+        minio_SVC_name = "minio-svc-" + self.name
+        raw_text.format(pvc_name, pod_name, pvc_name, image_name, cmd, minio_SVC_name)
+
     def __generate_yaml_wzlk8toolkit(self):
         yaml = YamlFileModelWzlk8toolkit()
         cmd_photogrammetry = CMDPhotogrammetry(self.dataset_name, self.mg_file_name).commands
@@ -214,11 +232,13 @@ class K8marsJobCreator:
     def write_yaml_file(self, what_to_write='all'):
         if what_to_write == 'all':
             with open(self.__yaml_file_generated, 'w') as f:
-                yaml_pvc_string = yaml.dump(self.__yaml_pvc.text)
-                yaml_job_string = yaml.dump(self.__yaml_wzlk8toolkit.text)
-                f.writelines(yaml_pvc_string)
-                f.write('---\n')
-                f.writelines(yaml_job_string)
+                # yaml_pvc_string = yaml.dump(self.__yaml_pvc.text)
+                # yaml_job_string = yaml.dump(self.__yaml_wzlk8toolkit.text)
+                yaml_job_wzlk8toolkit = self.yaml_wzlk8toolkit
+                # f.writelines(yaml_pvc_string)
+                # f.write('---\n')
+                # f.writelines(yaml_job_string)
+                f.write(yaml_job_wzlk8toolkit)
 
 class CMDPhotogrammetry:
     """
@@ -301,7 +321,6 @@ class K8marsJobManager:
         kubectl_controller_obj.show_options_for_job()
         kubectl_controller_obj.select_option_for_job()
 
-
 class ClusterPod:
     def __init__(self, name='', ):
         self.name = name
@@ -370,12 +389,12 @@ class KubectlController:
 
         return svcIP
 
-    def __run_photogrammetry(self):
-        cmd = 'exec -n ggr {} -- ' \
-              'meshroom_batch ' \
-              '-i /tmp/{} ' \
-              '--compute no ' \
-              '--save /tmp/{}/generatedMgTemplate.mg -o /tmp/MeshroomCache'.format(fullPodName, folder, folder)
+    # def __run_photogrammetry(self):
+    #     cmd = 'exec -n ggr {} -- ' \
+    #           'meshroom_batch ' \
+    #           '-i /tmp/{} ' \
+    #           '--compute no ' \
+    #           '--save /tmp/{}/generatedMgTemplate.mg -o /tmp/MeshroomCache'.format(fullPodName, folder, folder)
 
 class YamlFileModelPVC:
     def __init__(self):
@@ -393,12 +412,15 @@ class YamlFileModelMinioClient:
         """
         Read yaml file as a dict.
         """
-        super().__init__()
-        with open(PathInfo.yaml_templates_dir / 'job_minioclient.yaml') as f:
-            self.text = yaml.safe_load(f)
+        # super().__init__()
+        # with open(PathInfo.yaml_templates_dir / 'job_minioclient.yaml') as f:
+        #     self.text = yaml.safe_load(f)
+        self.text = yaml_templates.yaml_minio_client
+        self.pod_name = self.__set_pod_name()
 
     def __set_pod_name(self, param):
-        self.text['metadata']['name'] = param
+        # self.text['metadata']['name'] = param
+        return param
 
     def __set_container_name(self, param):
         self.text['spec']['template']['spec']['containers'][0]['name'] = param
