@@ -1,5 +1,4 @@
-yaml_Jobwzlk8toolkit = """
-apiVersion: v1
+yaml_Jobwzlk8toolkit = """apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: {}
@@ -76,5 +75,4 @@ spec:
         image: minio/mc:latest
         command: ['sh', '-c', 'echo The app is running! && sleep 36000']
       restartPolicy: Never
-  backoffLimit: 4
-"""
+  backoffLimit: 4"""

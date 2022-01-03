@@ -6,10 +6,14 @@ class PathInfo:
     """
     Path of directory always ends with '/'
     """
+    ### Working Directory ###
     work_dir = Path(os.getcwd())
     k8mars_dir = Path(os.path.abspath(os.path.join(os.getcwd(), '..')))
     yaml_templates_dir = work_dir / 'yaml_templates/'
     cache_folder = work_dir / 'k8marsCache/'
+
+    ### data location ###
+
 
 class Wzlk8toolkitMain:
     def __init__(self):
@@ -26,8 +30,11 @@ class Wzlk8toolkitMain:
             self.__create_job()
         if item == '2':
             self.__manager.show_jobs_by_index()
-            self.__manager.select_job()
-            # show list of jobs with index
+            selected_job_obj = self.__manager.select_job()
+            kubectl_controller_obj = KubectlController(selected_job_obj)
+            kubectl_controller_obj.show_options_for_job()
+            kubectl_controller_obj.select_option_for_job()
+            # show list of jobs with index : done
             # menu for entry points,
             # edit detail of yaml file
             # send kubectl cmd to cluster
@@ -42,12 +49,10 @@ class Wzlk8toolkitMain:
             self.__select_main_menu()
 
     def __create_job(self):
-        name = input('Please enter [job] name: ')
-        K8marsJobCreator_obj = K8marsJobCreator(name)
+        K8marsJobCreator_obj = K8marsJobCreator()
         K8marsJobCreator_obj.write_yaml_file()
         self.__manager.add_new_job(K8marsJobCreator_obj)
-        # K8marsJobCreator_obj.show_task_menu()
-        # K8marsJobCreator_obj.select_task_menu()
+
 
 
 

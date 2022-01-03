@@ -14,13 +14,13 @@ aruco_parameters = aruco.DetectorParameters_create()
 camera_baseline_translation = (0.5, 0, 0) # 0.5 meter along x axis
 
 if platform.system().lower() == 'windows':
-    work_dir = r'C:\Users\zieft\Desktop\test1\renders\\'
-    filePath = r"C:\Users\zieft\Desktop\test1\texturedMesh.obj"  # for development in windows
-    output_dir = r"C:\Users\zieft\Desktop\test1\output_mesh.obj"  # for development in windows
+    work_dir = r'C:\Users\zieft\Desktop\test2\renders\\'
+    filePath = r"C:\Users\zieft\Desktop\test2\texturedMesh.obj"  # for development in windows
+    output_dir = r"C:\Users\zieft\Desktop\test2\output_mesh.obj"  # for development in windows
 else:
     filePath = '/opt/examplesfortest/aruco1/texturedMesh.obj'  # for test in cluster / docker
     work_dir = '/storage/blenderOutput/renders/'
-    output_dir = "/opt/examplesfortest/aruco1/mesh_postprocessed.obj"
+    output_dir = "/opt/examplesfortest/aruco1/esh_postprocessed.obj"
 
 class CameraMatrixFromBlender:
     @staticmethod
@@ -424,13 +424,13 @@ class DetectedArUcoMarker_world:
         while 4, 5 and 6 are 10mm by 10mm.
         :return: The physical marker size (target value) of the given (detected) marker in meter.
         """
-        if self.id in {'7', '8', '9'}:
-            marker_size = 20 / 1000 # meter
-        elif self.id in {'4', '5', '6'}:
-            marker_size = 10 / 1000 # meter
-        else:
-            raise RuntimeError("No marker detected!")
-
+        # if self.id in {'7', '8', '9'}:
+        #     marker_size = 20 / 1000 # meter
+        # elif self.id in {'4', '5', '6'}:
+        #     marker_size = 10 / 1000 # meter
+        # else:
+        #     raise RuntimeError("No marker detected!")
+        marker_size = 25 / 1000 # meter, new markers are all in size 25x25mm
         return marker_size
 
     def __get_av_length_of_edges(self):

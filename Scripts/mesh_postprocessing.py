@@ -2,7 +2,7 @@
 # pydevd.settrace('127.0.0.1', port=1090, stdoutToServer=True, stderrToServer=True)
 import platform
 if platform.system().lower() == 'windows':
-    script_position = r'C:\Users\zieft\PycharmProjects\wzlk8toolkit'
+    script_position = r'C:\Users\zieft\k8mars\wzlk8toolkit'
 else:
     script_position = '/opt/scripts/wzlk8toolkit'
 
@@ -184,9 +184,11 @@ camera_object_verify.location = (0, 0, 1)
 BlenderCameraOperation.render_through_camera('verifyCamera')
 verifyCamera_img = ImageTransformProcess.readImageBIN(work_dir+'verifyCamera.png')
 verify_corners, verify_ids, _ = ArucoInfoDetection.detect_save_aruco_info_image('verifyCamera', verifyCamera_img)
-if verify_corners ==[]:
-    bpy.context.scene.objects["texturedMesh"].select_set(True)
-    bpy.ops.transform.rotate(value=math.pi, orient_axis='Y')
+# if verify_corners ==[]:
+#     bpy.context.scene.objects["texturedMesh"].select_set(True)
+#     bpy.ops.transform.rotate(value=math.pi, orient_axis='Y')
+bpy.context.scene.objects["texturedMesh"].select_set(True)
+bpy.ops.transform.rotate(value=math.pi, orient_axis='Y')
 
 print('## delete unnesessary infomation')
 bpy.context.view_layer.objects.active = bpy.context.scene.objects["texturedMesh"]

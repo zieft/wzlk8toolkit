@@ -7,16 +7,14 @@ import sys
 import json
 
 
-pipelineMgFile = sys.argv[1]
-dataset_name = sys.argv[2]
+path_provided_mg_file = sys.argv[1]
+# dataset_name = sys.argv[2]
+path_generated_mg_file = sys.argv[2]
 
-generatedMgFileName = '/storage/fromS3/{}/generatedMgTemplate.mg'.format(dataset_name)
-print(generatedMgFileName)
-
-with open(pipelineMgFile) as pipelineFile:
+with open(path_provided_mg_file) as pipelineFile:
     pipeline = json.load(pipelineFile)
 
-with open(generatedMgFileName) as generatedFile:
+with open(path_generated_mg_file) as generatedFile:
     imagePath = json.load(generatedFile)
 
 nodeList = list(pipeline['graph'].keys())
@@ -38,6 +36,6 @@ for node in nodeList:
 #
 # pipeline['graph']['FeatureExtraction_1']['inputs']['maxThreads'] = 20
 
-with open(pipelineMgFile, 'w') as f:
+with open(path_provided_mg_file, 'w') as f:
     json.dump(pipeline, f)
 
