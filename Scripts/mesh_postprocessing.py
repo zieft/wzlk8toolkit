@@ -4,13 +4,18 @@
 import bpy
 import sys
 import os
+
 sys.path.append(os.path.curdir)
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = os.path.dirname(
+    os.path.dirname(r'C:\Users\zieft\PycharmProjects\wzlk8toolkit\Scripts\mesh_postprocessing.py'))
 os.chdir(BASE_DIR)
-output_dir='/storage/blender/output/mesh_postprocessed.obj'
+# output_dir='/storage/blender/output/mesh_postprocessed.obj'
+output_dir = r'C:\Users\zieft\Desktop\Texturing\mesh_postprocessed.obj'
+# filePath = '/storage/blender/input/texturedMesh.obj'
+filePath = r'C:\Users\zieft\Desktop\Texturing\81233210f0b76d5da7f9857d537344b72f255b15\texturedMesh.obj'
 
 from core.bpycore import *
-
 
 ## Delete initial objects.
 if "Cube" in bpy.data.meshes:
@@ -35,11 +40,9 @@ for area in bpy.context.screen.areas:
             if space.type == 'VIEW_3D':
                 space.shading.type = 'RENDERED'
 
-
 bpy.ops.object.empty_add(type='PLAIN_AXES', location=(0, 0, 0))
 
 ## import .obj file
-filePath = '/storage/blender/input/texturedMesh.obj'
 bpy.ops.import_scene.obj(filepath=filePath)
 
 ## set texturedMesh to the world origin
@@ -47,7 +50,6 @@ objectToSelect = bpy.data.objects['texturedMesh']
 objectToSelect.select_set(True)
 bpy.context.view_layer.objects.active = objectToSelect
 bpy.ops.object.origin_set(type='GEOMETRY_ORIGIN', center='MEDIAN')
-
 
 # Step 1: Define a sphere
 cameraCoordinates, cameraNumbers = BlenderCameraOperation.generateDomeCoor(10, 10, 4)
@@ -61,39 +63,52 @@ BlenderCameraOperation.addLightSources(lightCoordinates, lightNumbers)
 for camera in cameraList:
     BlenderCameraOperation.render_through_camera(camera)
 
-numbers_of_markers_detected = 0
-best_camera_angle = ''
-aruco_info = {}
+max_len = 0
+cameras_with_id_length = []
 for camera in cameraList:
-    img = ImageTransformProcess.readImageBIN(work_dir+'{}.png'.format(camera['name']))
+    img = ImageTransformProcess.readImageBIN(work_dir + '{}.png'.format(camera['name']))
+    aruco_info = {}
+    best_camera_angle_name = ''
     try:
         corners, ids, _ = ArucoInfoDetection.detect_save_aruco_info_image(camera, img)
         if ids is not None:
-            if len(ids) > numbers_of_markers_detected:
-                numbers_of_markers_detected = len(ids)
-                best_camera_angle = camera['name']
-                aruco_info['corners'] = corners
-                aruco_info['ids'] = ids
+            best_camera_angle_name = camera['name']
+            aruco_info['corners'] = corners
+            aruco_info['ids'] = ids
+            cameras_with_id_length.append([best_camera_angle_name, aruco_info])
+            print(cameras_with_id_length)
+            if len(ids) > max_len:
+                max_len = len(ids)
+
     except cv2.error:
         pass
 
-print('Selected Camera: {}'.format(best_camera_angle))
+print(max_len)
+
+print('Selected Camera: {}'.format(best_camera_angle_name))
+j = 0
+for i in cameras_with_id_length:
+    if len(i[1]['ids']) >= max_len - 2:
+        best_camera_angle_name = i[0]
+        aruco_info = i[1]
+        j += 1
+        print(best_camera_angle_name, aruco_info)
+
 
 # Step 6: Move the camera slightly to build a stereo pair
 bpy.ops.object.select_all(action='DESELECT')
-best_camera_angle_co = BlenderCameraOperation.add_co_camera(best_camera_angle)
+best_camera_angle_co = BlenderCameraOperation.add_co_camera(best_camera_angle_name)
 BlenderCameraOperation.render_through_camera(best_camera_angle_co)
-co_img = ImageTransformProcess.readImageBIN(work_dir+'{}.png'.format(best_camera_angle_co))
+co_img = ImageTransformProcess.readImageBIN(work_dir + '{}.png'.format(best_camera_angle_co))
 corners_co, ids_co, _ = ArucoInfoDetection.detect_save_aruco_info_image(best_camera_angle_co, co_img)
-aruco_info_co = {'corners': corners_co, 'ids':ids_co}
-
+aruco_info_co = {'corners': corners_co, 'ids': ids_co}
 
 # Step 7: Calculate the coordinates of the markers
-iml = ImageTransformProcess.readImageBIN(work_dir+'{}.png'.format(best_camera_angle), BIN=False)
-imr = ImageTransformProcess.readImageBIN(work_dir+'{}.png'.format(best_camera_angle_co), BIN=False)
+iml = ImageTransformProcess.readImageBIN(work_dir + '{}.png'.format(best_camera_angle_name), BIN=False)
+imr = ImageTransformProcess.readImageBIN(work_dir + '{}.png'.format(best_camera_angle_co), BIN=False)
 height, width = iml.shape[0:2]
 
-stereo_config = stereoCamera(best_camera_angle, best_camera_angle_co)
+stereo_config = stereoCamera(best_camera_angle_name, best_camera_angle_co)
 
 ## Stereo Rectify
 map1x, map1y, map2x, map2y, Q, cameraRecMat = ImageTransformProcess.getRectifyTransform(height, width, stereo_config)
@@ -102,33 +117,34 @@ iml_rectified, imr_rectified = ImageTransformProcess.rectifyImage(iml, imr, map1
 line = ImageTransformProcess.draw_line(iml_rectified, imr_rectified)
 plt.figure()
 plt.imshow(line)
-plt.savefig(work_dir+'validation.png', dpi=1000)
-
+plt.savefig(work_dir + 'validation.png', dpi=1000)
 
 ## Stereo Match
 iml_, imr_ = ImageTransformProcess.preprocess(iml, imr)
 disp, _ = ImageTransformProcess.stereoMatchSGBM(iml_rectified, imr_rectified, True)
 plt.figure()
 plt.imshow(disp)
-plt.savefig(work_dir+'z_disparity_map.png', dpi=1000)
+plt.savefig(work_dir + 'z_disparity_map.png', dpi=1000)
 
 ## Reproject image to 3D World
 points_3d = cv2.reprojectImageTo3D(disp, Q)
-points_3d[:,:,1:3] = -points_3d[:,:, 1:3] # y, z direction in OpenCV and Blender are different
+points_3d[:, :, 1:3] = -points_3d[:, :, 1:3]  # y, z direction in OpenCV and Blender are different
 
 ## New algrithm
 aruco_info_better = ArucoInfoDetection.better_aruco_info(aruco_info)
 aruco_info_co_better = ArucoInfoDetection.better_aruco_info(aruco_info_co)
 
-aruco_info_common, aruco_info_co_common, common_ids = DetectedArUcoMarker_world.detected_markers_common(aruco_info_better, aruco_info_co_better)
+aruco_info_common, aruco_info_co_common, common_ids = DetectedArUcoMarker_world.detected_markers_common(
+    aruco_info_better, aruco_info_co_better)
 
-allMarkers, allCorners = StereoPointObject.generate_dict_of_stereo_point_pairs_obj_allMarker(aruco_info_common, aruco_info_co_common, common_ids ,stereo_config)
+allMarkers, allCorners = StereoPointObject.generate_dict_of_stereo_point_pairs_obj_allMarker(aruco_info_common,
+                                                                                             aruco_info_co_common,
+                                                                                             common_ids, stereo_config)
 
 list_detected_markers_obj = []
 for id in common_ids:
     exec('DetectedAruco_id_{} = DetectedArUcoMarker_world(allMarkers[id], id)'.format(id))
     exec('list_detected_markers_obj.append(DetectedAruco_id_{})'.format(id))
-
 
 verts, edges, faces = DetectedArUcoMarker_world.plane_from_all_corners(allCorners)
 surfaceName = StereoPointObject.addSurface(verts, edges, faces, surfaceName='reference')
@@ -140,9 +156,9 @@ for i in cameraList:
 bpy.context.scene.objects["reference"].select_set(True)
 bpy.context.view_layer.objects.active = bpy.context.scene.objects["reference"]
 bpy.ops.object.editmode_toggle()
-areas= [area for area in bpy.context.window.screen.areas if area.type == 'VIEW_3D']
+areas = [area for area in bpy.context.window.screen.areas if area.type == 'VIEW_3D']
 if areas:
-    override = {'area' : areas[0]}
+    override = {'area': areas[0]}
     bpy.ops.transform.create_orientation(override, name="Reference", use=True)
 
 ## toggle edit mode and change Transformation Orientation to the custom orientation('Reference')
@@ -172,7 +188,6 @@ rescale_factor = rescale_factor / len(list_detected_markers_obj)
 bpy.ops.transform.resize(value=(rescale_factor, rescale_factor, rescale_factor))
 bpy.ops.object.select_all(action='DESELECT')
 
-
 ## Verify direction
 view_layer = bpy.context.view_layer
 camera_data_verify = bpy.data.cameras.new(name='verifyCamera')
@@ -180,9 +195,9 @@ camera_object_verify = bpy.data.objects.new(name='verifyCamera', object_data=cam
 view_layer.active_layer_collection.collection.objects.link(camera_object_verify)
 camera_object_verify.location = (0, 0, 1)
 BlenderCameraOperation.render_through_camera('verifyCamera')
-verifyCamera_img = ImageTransformProcess.readImageBIN(work_dir+'verifyCamera.png')
+verifyCamera_img = ImageTransformProcess.readImageBIN(work_dir + 'verifyCamera.png')
 verify_corners, verify_ids, _ = ArucoInfoDetection.detect_save_aruco_info_image('verifyCamera', verifyCamera_img)
-if verify_corners ==[]:
+if verify_corners == []:
     bpy.context.scene.objects["texturedMesh"].select_set(True)
 
     bpy.ops.transform.rotate(value=math.pi, orient_axis='Y')

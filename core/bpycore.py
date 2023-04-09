@@ -11,7 +11,8 @@ aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
 aruco_parameters = aruco.DetectorParameters_create()
 
 camera_baseline_translation = (0.5, 0, 0) # 0.5 meter along x axis
-work_dir = '/storage/blender/output/'
+# work_dir = '/storage/blender/output/'
+work_dir = r'C:\Users\zieft\Desktop\Texturing\output'
 a = 1
 
 class CameraMatrixFromBlender:
@@ -445,6 +446,64 @@ class DetectedArUcoMarker_world():
         return self.marker_size / self.av_edge_length
 
     @staticmethod
+    def plane_from_least_square(allCorners):
+        """
+        Least square method to find a plane according to given points.
+        Plane：z = A * x + B * y + C
+        :param allCorners: NumPy array, with the shape (number of corners, 3)
+        :param show_plot: plot the diagram of the plane, debug only.
+        :return: (A, B, C)
+        """
+        num_corners = len(allCorners)
+        A = np.zeros((3, 3))
+        x = allCorners[:, 0]
+        y = allCorners[:, 1]
+        z = allCorners[:, 2]
+
+        for i in range(0, num_corners):
+            A[0, 0] = A[0, 0] + x[i] ** 2
+            A[0, 1] = A[0, 1] + x[i] * y[i]
+            A[0, 2] = A[0, 2] + x[i]
+            A[1, 0] = A[0, 1]
+            A[1, 1] = A[1, 1] + y[i] ** 2
+            A[1, 2] = A[1, 2] + y[i]
+            A[2, 0] = A[0, 2]
+            A[2, 1] = A[1, 2]
+            A[2, 2] = num_corners
+
+        b = np.zeros((3, 1))
+        for i in range(0, num_corners):
+            b[0, 0] = b[0, 0] + x[i] * z[i]
+            b[1, 0] = b[1, 0] + y[i] * z[i]
+            b[2, 0] = b[2, 0] + z[i]
+
+        A_inv = np.linalg.inv(A)
+        X = np.dot(A_inv, b)
+        print('Plane：z = {} * x + {} * y + {}'.format(X[0, 0], X[1, 0], X[2, 0]))
+        return np.array([X[0, 0], X[1, 0], X[2, 0]])
+
+    @staticmethod
+    def mean_plane(list_of_planes):
+        """
+        input: list of numpy arrays.
+        """
+        pass
+
+
+    @staticmethod
+    def vertices_from_plane(A, B, C):
+        z1 = A * 2 + B * 2 + C
+        z2 = A * 2 + B * 1 + C
+        z3 = A * 1 + B * 2 + C
+
+        verts = [(2, 2, z1), (2, 1, z2), (1, 2, z3)]
+        edges = [(0, 1), (1, 2), (2, 0)]
+        faces = [(0, 1, 2)]
+
+        return verts, edges, faces
+
+
+    @staticmethod
     def plane_from_all_corners(allCorners, show_plot=False):
         """
         Least square method to find a plane according to given points.
@@ -790,9 +849,10 @@ class BlenderCameraOperation:
         scene.render.resolution_y = resolution[1]
         scene.render.resolution_percentage = resolution_percentage
         scene.render.use_border = False
-        scene.render.engine = 'CYCLES'
-        scene.cycles.device = 'GPU'
-        scene.view_layers[0].cycles.use_denoising = True
+        scene.render.engine = 'BLENDER_EEVEE'
+        # scene.render.engine = 'CYCLES'
+        # scene.cycles.device = 'GPU'
+        # scene.view_layers[0].cycles.use_denoising = True
 
         if isinstance(camera, dict):
             scene.camera = bpy.data.objects[camera['name']]
