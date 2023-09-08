@@ -11,9 +11,9 @@ BASE_DIR = os.path.dirname(
     os.path.dirname(r'C:\Users\zieft\PycharmProjects\wzlk8toolkit\Scripts\mesh_postprocessing.py'))
 os.chdir(BASE_DIR)
 # output_dir='/storage/blender/output/mesh_postprocessed.obj'
-output_dir = r'C:\Users\zieft\Desktop\Texturing\mesh_postprocessed.obj'
+output_dir = r'C:\Users\zieft\Desktop\edge_detection\mesh_postprocessed.obj'
 # filePath = '/storage/blender/input/texturedMesh.obj'
-filePath = r'C:\Users\zieft\Desktop\Texturing\81233210f0b76d5da7f9857d537344b72f255b15\texturedMesh.obj'
+filePath = r'C:\Users\zieft\Desktop\edge_detection\FPI3_200_new_output\Texturing\a1e3056d2d3e96c4fbc3b2e90db2ad84caf486b4\texturedMesh.obj'
 
 from core.bpycore import *
 
@@ -85,68 +85,88 @@ for camera in cameraList:
 
 print(max_len)
 
-print('Selected Camera: {}'.format(best_camera_angle_name))
-j = 0
+# print('Selected Camera: {}'.format(best_camera_angle_name))
+
+selected_cameras = []
 for i in cameras_with_id_length:
-    if len(i[1]['ids']) >= max_len - 2:
-        best_camera_angle_name = i[0]
-        aruco_info = i[1]
-        j += 1
-        print(best_camera_angle_name, aruco_info)
+    if len(i[1]['ids']) >= max_len - 1:
+        selected_cameras.append(i)
+
+plane_coefficients = np.array([0, 0, 0], dtype='f2')
 
 
-# Step 6: Move the camera slightly to build a stereo pair
-bpy.ops.object.select_all(action='DESELECT')
-best_camera_angle_co = BlenderCameraOperation.add_co_camera(best_camera_angle_name)
-BlenderCameraOperation.render_through_camera(best_camera_angle_co)
-co_img = ImageTransformProcess.readImageBIN(work_dir + '{}.png'.format(best_camera_angle_co))
-corners_co, ids_co, _ = ArucoInfoDetection.detect_save_aruco_info_image(best_camera_angle_co, co_img)
-aruco_info_co = {'corners': corners_co, 'ids': ids_co}
+all_list_detected_markers_obj = []
+for camera in selected_cameras:
+    # Step 6: Move the camera slightly to build a stereo pair
+    bpy.ops.object.select_all(action='DESELECT')
+    best_camera_angle_co = BlenderCameraOperation.add_co_camera(camera[0])
+    BlenderCameraOperation.render_through_camera(best_camera_angle_co)
+    co_img = ImageTransformProcess.readImageBIN(work_dir + '{}.png'.format(best_camera_angle_co))
+    corners_co, ids_co, _ = ArucoInfoDetection.detect_save_aruco_info_image(best_camera_angle_co, co_img)
+    aruco_info_co = {'corners': corners_co, 'ids': ids_co}
+    # Step 7: Calculate the coordinates of the markers
+    iml = ImageTransformProcess.readImageBIN(work_dir + '{}.png'.format(camera[0]), BIN=False)
+    imr = ImageTransformProcess.readImageBIN(work_dir + '{}.png'.format(best_camera_angle_co), BIN=False)
+    height, width = iml.shape[0:2]
+    stereo_config = stereoCamera(camera[0], best_camera_angle_co)
+    ## Stereo Rectify
+    map1x, map1y, map2x, map2y, Q, cameraRecMat = ImageTransformProcess.getRectifyTransform(height, width,
+                                                                                            stereo_config)
+    iml_rectified, imr_rectified = ImageTransformProcess.rectifyImage(iml, imr, map1x, map1y, map2x, map2y)
+    line = ImageTransformProcess.draw_line(iml_rectified, imr_rectified)
+    plt.figure()
+    plt.imshow(line)
+    plt.savefig(work_dir + 'validation.png', dpi=1000)
+    ## Stereo Match
+    iml_, imr_ = ImageTransformProcess.preprocess(iml, imr)
+    disp, _ = ImageTransformProcess.stereoMatchSGBM(iml_rectified, imr_rectified, True)
+    plt.figure()
+    plt.imshow(disp)
+    plt.savefig(work_dir + 'z_disparity_map.png', dpi=1000)
+    ## Reproject image to 3D World
+    points_3d = cv2.reprojectImageTo3D(disp, Q)
+    points_3d[:, :, 1:3] = -points_3d[:, :, 1:3]  # y, z direction in OpenCV and Blender are different
+    ## New algrithm
+    aruco_info_better = ArucoInfoDetection.better_aruco_info(camera[1])
+    aruco_info_co_better = ArucoInfoDetection.better_aruco_info(aruco_info_co)
+    if not aruco_info_better or not aruco_info_co_better:
+        continue
+    aruco_info_common, aruco_info_co_common, common_ids = DetectedArUcoMarker_world.detected_markers_common(
+        aruco_info_better, aruco_info_co_better)
+    allMarkers, allCorners = StereoPointObject.generate_dict_of_stereo_point_pairs_obj_allMarker(aruco_info_common,
+                                                                                                 aruco_info_co_common,
+                                                                                                 common_ids,
+                                                                                                 stereo_config)
+    list_detected_markers_obj = []
+    for id in common_ids:
+        exec('DetectedAruco_id_{} = DetectedArUcoMarker_world(allMarkers[id], id)'.format(id))
+        exec('list_detected_markers_obj.append(DetectedAruco_id_{})'.format(id))
+    all_list_detected_markers_obj.append(list_detected_markers_obj)
+    A, B, C = DetectedArUcoMarker_world.plane_from_least_square(allCorners)
+    coefficient = np.array([A, B, C], dtype='f2')
+    print(coefficient)
+    plane_coefficients = np.row_stack((plane_coefficients, coefficient))
 
-# Step 7: Calculate the coordinates of the markers
-iml = ImageTransformProcess.readImageBIN(work_dir + '{}.png'.format(best_camera_angle_name), BIN=False)
-imr = ImageTransformProcess.readImageBIN(work_dir + '{}.png'.format(best_camera_angle_co), BIN=False)
-height, width = iml.shape[0:2]
 
-stereo_config = stereoCamera(best_camera_angle_name, best_camera_angle_co)
+plane_coefficients = plane_coefficients[1:, :]  # delete the initial line [0, 0, 0]
 
-## Stereo Rectify
-map1x, map1y, map2x, map2y, Q, cameraRecMat = ImageTransformProcess.getRectifyTransform(height, width, stereo_config)
-iml_rectified, imr_rectified = ImageTransformProcess.rectifyImage(iml, imr, map1x, map1y, map2x, map2y)
+# get rid of abnormal
+array_of_deviations = abs(plane_coefficients - plane_coefficients.mean(axis=0))
+line_index = 0
+for line in array_of_deviations:
+    # TODO: 这里可以改成try，从小的数目开始，逐渐增加阈值
+    bool_array = line > 2.3  # scale of abnormal
+    if bool_array.any():
+        array_of_deviations = np.delete(array_of_deviations, line_index, axis=0)
+        plane_coefficients = np.delete(plane_coefficients, line_index, axis=0)
+        del all_list_detected_markers_obj[line_index]
+        line_index -= 1
+    line_index += 1
 
-line = ImageTransformProcess.draw_line(iml_rectified, imr_rectified)
-plt.figure()
-plt.imshow(line)
-plt.savefig(work_dir + 'validation.png', dpi=1000)
+A, B, C = tuple(plane_coefficients.mean(axis=0).tolist())
 
-## Stereo Match
-iml_, imr_ = ImageTransformProcess.preprocess(iml, imr)
-disp, _ = ImageTransformProcess.stereoMatchSGBM(iml_rectified, imr_rectified, True)
-plt.figure()
-plt.imshow(disp)
-plt.savefig(work_dir + 'z_disparity_map.png', dpi=1000)
 
-## Reproject image to 3D World
-points_3d = cv2.reprojectImageTo3D(disp, Q)
-points_3d[:, :, 1:3] = -points_3d[:, :, 1:3]  # y, z direction in OpenCV and Blender are different
-
-## New algrithm
-aruco_info_better = ArucoInfoDetection.better_aruco_info(aruco_info)
-aruco_info_co_better = ArucoInfoDetection.better_aruco_info(aruco_info_co)
-
-aruco_info_common, aruco_info_co_common, common_ids = DetectedArUcoMarker_world.detected_markers_common(
-    aruco_info_better, aruco_info_co_better)
-
-allMarkers, allCorners = StereoPointObject.generate_dict_of_stereo_point_pairs_obj_allMarker(aruco_info_common,
-                                                                                             aruco_info_co_common,
-                                                                                             common_ids, stereo_config)
-
-list_detected_markers_obj = []
-for id in common_ids:
-    exec('DetectedAruco_id_{} = DetectedArUcoMarker_world(allMarkers[id], id)'.format(id))
-    exec('list_detected_markers_obj.append(DetectedAruco_id_{})'.format(id))
-
-verts, edges, faces = DetectedArUcoMarker_world.plane_from_all_corners(allCorners)
+verts, edges, faces = DetectedArUcoMarker_world.vertices_from_plane(A, B, C)
 surfaceName = StereoPointObject.addSurface(verts, edges, faces, surfaceName='reference')
 
 for i in cameraList:
@@ -180,11 +200,18 @@ bpy.ops.object.delete()
 
 ## Rescale
 bpy.context.scene.objects["texturedMesh"].select_set(True)
-rescale_factor = 0
-for i in list_detected_markers_obj:
-    rescale_factor += i.rescale_factor
 
-rescale_factor = rescale_factor / len(list_detected_markers_obj)
+rescale_factors = 0
+loop_counter = 0
+for list_detected_markers_obj in all_list_detected_markers_obj:
+    rescale_factor = 0
+    for i in list_detected_markers_obj:
+        rescale_factor += i.rescale_factor
+    rescale_factor = rescale_factor / len(list_detected_markers_obj)
+    rescale_factors += rescale_factor
+    loop_counter += 1
+
+rescale_factor = rescale_factors / loop_counter
 bpy.ops.transform.resize(value=(rescale_factor, rescale_factor, rescale_factor))
 bpy.ops.object.select_all(action='DESELECT')
 
@@ -199,7 +226,6 @@ verifyCamera_img = ImageTransformProcess.readImageBIN(work_dir + 'verifyCamera.p
 verify_corners, verify_ids, _ = ArucoInfoDetection.detect_save_aruco_info_image('verifyCamera', verifyCamera_img)
 if verify_corners == []:
     bpy.context.scene.objects["texturedMesh"].select_set(True)
-
     bpy.ops.transform.rotate(value=math.pi, orient_axis='Y')
 
 ## delete unnesessary infomation
@@ -217,7 +243,7 @@ for vert in me.vertices:
     vert.select = False
 
 for vert in me.vertices:
-    if (sqrt(vert.co.x ** 2 + vert.co.y ** 2) > 0.50) or ((vert.co.z < -0.90) or (vert.co.z > 0.24)):
+    if (sqrt(vert.co.x ** 2 + vert.co.y ** 2) > 0.50) or ((vert.co.z < -0.99) or (vert.co.z > 0.10)):
         vert.select = True
 
 bpy.ops.object.select_all(action='DESELECT')

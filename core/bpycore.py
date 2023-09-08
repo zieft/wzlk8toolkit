@@ -1,19 +1,21 @@
-import bpy
-from math import *
-import numpy as np
 import math
-from mathutils import Matrix
+from math import *
+
+import bpy
 import cv2
-from cv2 import aruco
 import matplotlib.pyplot as plt
+import numpy as np
+from cv2 import aruco
+from mathutils import Matrix
 
 aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
 aruco_parameters = aruco.DetectorParameters_create()
 
-camera_baseline_translation = (0.5, 0, 0) # 0.5 meter along x axis
+camera_baseline_translation = (0.5, 0, 0)  # 0.5 meter along x axis
 # work_dir = '/storage/blender/output/'
 work_dir = r'C:\Users\zieft\Desktop\Texturing\output'
 a = 1
+
 
 class CameraMatrixFromBlender:
     @staticmethod
@@ -67,7 +69,8 @@ class CameraMatrixFromBlender:
         R_world2cv = R_bcam2cv @ R_world2bcam
         T_world2cv = R_bcam2cv @ T_world2bcam
 
-        RT = Matrix((R_world2cv[0][:] + (T_world2cv[0],), R_world2cv[1][:] + (T_world2cv[1],), R_world2cv[2][:] + (T_world2cv[2],)))
+        RT = Matrix((R_world2cv[0][:] + (T_world2cv[0],), R_world2cv[1][:] + (T_world2cv[1],),
+                     R_world2cv[2][:] + (T_world2cv[2],)))
 
         return RT
 
@@ -90,7 +93,9 @@ class cameraObject():
         self.location_world = np.array(bpy.data.objects[cameraName].location)
         self.R_world2cam = np.array(bpy.data.objects[cameraName].matrix_world)[:3, :3]
         self.T_world2cam = np.array(bpy.data.objects[cameraName].matrix_world)[:3, 3].reshape((1, 3))
-        self.K = np.array(CameraMatrixFromBlender.get_calibration_matrix_K_from_blender(bpy.data.objects[cameraName].data), dtype=float)
+        self.K = np.array(
+            CameraMatrixFromBlender.get_calibration_matrix_K_from_blender(bpy.data.objects[cameraName].data),
+            dtype=float)
 
 
 class ArucoInfoDetection:
@@ -153,6 +158,8 @@ class ArucoInfoDetection:
         """
         corners = aruco_info['corners']
         ids = aruco_info['ids']
+        if ids is None:
+            return
         ids_list = ids.reshape(len(ids)).tolist()
         ids_list = [str(i) for i in ids_list]
         corners_list = []
@@ -171,8 +178,12 @@ class stereoCamera(object):
         self.R_world2cam_l = np.array(bpy.data.objects[camera_left].matrix_world)[:3, :3]
         self.cam_left_name = bpy.data.objects[camera_left].name
 
-        self.cam_matrix_left = np.array(CameraMatrixFromBlender.get_calibration_matrix_K_from_blender(bpy.data.objects[camera_left].data), dtype=float)
-        self.cam_matrix_right = np.array(CameraMatrixFromBlender.get_calibration_matrix_K_from_blender(bpy.data.objects[camera_right].data), dtype=float)
+        self.cam_matrix_left = np.array(
+            CameraMatrixFromBlender.get_calibration_matrix_K_from_blender(bpy.data.objects[camera_left].data),
+            dtype=float)
+        self.cam_matrix_right = np.array(
+            CameraMatrixFromBlender.get_calibration_matrix_K_from_blender(bpy.data.objects[camera_right].data),
+            dtype=float)
         self.distortion_left = np.zeros((1, 5), dtype=float)
         self.distortion_right = np.zeros((1, 5), dtype=float)
 
@@ -180,7 +191,7 @@ class stereoCamera(object):
         self.T = np.array([tuple(-ti for ti in camera_baseline_translation)], dtype=float).T
 
         self.focal_length = 50  # mm
-        self.baseline = camera_baseline_translation[0] # meter
+        self.baseline = camera_baseline_translation[0]  # meter
 
 
 class StereoPointObject():
@@ -204,7 +215,7 @@ class StereoPointObject():
 
         self.focal_length = stereo_camera_obj.focal_length
         self.cam_matrix_l = stereo_camera_obj.cam_matrix_left
-        self.stereo_baseline = stereo_camera_obj.baseline # no need to change m to mm
+        self.stereo_baseline = stereo_camera_obj.baseline  # no need to change m to mm
         self.c_R_w = stereo_camera_obj.R_world2cam_l
         self.w_r_world2cam = stereo_camera_obj.T_world2cam_l
 
@@ -238,7 +249,7 @@ class StereoPointObject():
         Y_c = b * (self.v_l - v_0) / d
         Z_c = b * f_x / d
 
-        return np.array([X_c, -Y_c, -Z_c]) # direction of y & z coordinates defined in blender and openCV are opposite
+        return np.array([X_c, -Y_c, -Z_c])  # direction of y & z coordinates defined in blender and openCV are opposite
 
     def __coor_cam_2_world(self):
         """
@@ -397,7 +408,7 @@ class DetectedArUcoMarker_world():
 
     def __generate_surface(self):
         """
-        Debug only,gererate a (same size) surface to cover up the given(detected) marker.
+        Debug only, gererate a (same size) surface to cover up the given(detected) marker.
         :return: str, surface name of the surface object created in Blender.
         """
         view_layer = bpy.context.view_layer
@@ -415,14 +426,14 @@ class DetectedArUcoMarker_world():
         while 4, 5 and 6 are 10mm by 10mm.
         :return: The physical marker size (target value) of the given (detected) marker in meter.
         """
-        #if self.id in {'7', '8', '9'}:
+        # if self.id in {'7', '8', '9'}:
         #    marker_size = 20 / 1000 # meter
-        #elif self.id in {'4', '5', '6'}:
+        # elif self.id in {'4', '5', '6'}:
         #    marker_size = 10 / 1000 # meter
-        #else:
+        # else:
         #    raise RuntimeError("No marker detected!")
 
-        marker_size = 25 / 1000 # meter, new markers are all in size 25x25mm
+        marker_size = 25 / 1000  # meter, new markers are all in size 25x25mm
         return marker_size
 
     def __get_av_length_of_edges(self):
@@ -483,14 +494,6 @@ class DetectedArUcoMarker_world():
         return np.array([X[0, 0], X[1, 0], X[2, 0]])
 
     @staticmethod
-    def mean_plane(list_of_planes):
-        """
-        input: list of numpy arrays.
-        """
-        pass
-
-
-    @staticmethod
     def vertices_from_plane(A, B, C):
         z1 = A * 2 + B * 2 + C
         z2 = A * 2 + B * 1 + C
@@ -501,7 +504,6 @@ class DetectedArUcoMarker_world():
         faces = [(0, 1, 2)]
 
         return verts, edges, faces
-
 
     @staticmethod
     def plane_from_all_corners(allCorners, show_plot=False):
@@ -637,12 +639,13 @@ class ImageTransformProcess:
 
         height = int(height)
         width = int(width)
-        R1, R2, P1, P2, Q, roi1, roi2 = cv2.stereoRectify(left_K, left_distortion, right_K, right_distortion, (width, height), R, T, alpha=0)
+        R1, R2, P1, P2, Q, roi1, roi2 = cv2.stereoRectify(left_K, left_distortion, right_K, right_distortion,
+                                                          (width, height), R, T, alpha=0)
 
         map1x, map1y = cv2.initUndistortRectifyMap(left_K, left_distortion, R1, P1, (width, height), cv2.CV_32FC1)
         map2x, map2y = cv2.initUndistortRectifyMap(right_K, right_distortion, R2, P2, (width, height), cv2.CV_32FC1)
 
-        return map1x, map1y, map2x, map2y, Q , P1
+        return map1x, map1y, map2x, map2y, Q, P1
 
     @staticmethod
     def rectifyImage(image1, image2, map1x, map1y, map2x, map2y):
@@ -678,7 +681,8 @@ class ImageTransformProcess:
 
         line_interval = 50
         for k in range(height // line_interval):
-            cv2.line(output, (0, line_interval * (k + 1)), (2 * width, line_interval * (k + 1)), (0, 255, 0), thickness=2,
+            cv2.line(output, (0, line_interval * (k + 1)), (2 * width, line_interval * (k + 1)), (0, 255, 0),
+                     thickness=2,
                      lineType=cv2.LINE_AA)
 
         return output
@@ -768,12 +772,12 @@ class BlenderCameraOperation:
         :return: list of coordinates.
         """
         r = radius
-        stepPhi = 2*math.pi / numHor
-        stepTheta = 2*math.pi / numVer
+        stepPhi = 2 * math.pi / numHor
+        stepTheta = 2 * math.pi / numVer
         coordinates = []
 
-        for i in range(numHor+1):
-            for j in range(numVer+1):
+        for i in range(numHor + 1):
+            for j in range(numVer + 1):
                 phi = i * stepPhi
                 theta = j * stepTheta
                 coordinate = (r * sin(phi) * cos(theta), r * sin(phi) * sin(theta), r * cos(phi))
@@ -792,7 +796,7 @@ class BlenderCameraOperation:
         """
         view_layer = bpy.context.view_layer
         cameraList = []
-        for i in range(cameraNumbers+1):
+        for i in range(cameraNumbers + 1):
             cameraID = i
             cameraName = 'camera{}'.format(cameraID)
             camera_data = bpy.data.cameras.new(name=cameraName)
@@ -850,17 +854,17 @@ class BlenderCameraOperation:
         scene.render.resolution_percentage = resolution_percentage
         scene.render.use_border = False
         scene.render.engine = 'BLENDER_EEVEE'
-        # scene.render.engine = 'CYCLES'
-        # scene.cycles.device = 'GPU'
-        # scene.view_layers[0].cycles.use_denoising = True
+        #         # scene.render.engine = 'CYCLES'
+        #         # scene.cycles.device = 'GPU'
+        #         # scene.view_layers[0].cycles.use_denoising = True
 
         if isinstance(camera, dict):
             scene.camera = bpy.data.objects[camera['name']]
-            bpy.data.scenes["Scene"].render.filepath = work_dir+'{}.png'.format(camera['name'])
+            bpy.data.scenes["Scene"].render.filepath = work_dir + '{}.png'.format(camera['name'])
 
         elif isinstance(camera, str):
             scene.camera = bpy.data.objects[camera]
-            bpy.data.scenes["Scene"].render.filepath = work_dir+'{}.png'.format(camera)
+            bpy.data.scenes["Scene"].render.filepath = work_dir + '{}.png'.format(camera)
 
         bpy.ops.render.render(write_still=True)
 
@@ -885,7 +889,7 @@ class BlenderCameraOperation:
         :param R: NumPy array, a Rotation Matrix.
         :return: tuple, angle in rad rotate alone x, y, z coordinate according Euler Angles.
         """
-        assert(BlenderCameraOperation.isRotationMatrix(R))
+        assert (BlenderCameraOperation.isRotationMatrix(R))
 
         sy = math.sqrt(R[0, 0] * R[0, 0] + R[1, 0] * R[1, 0])
         singular = sy < 1e-6
