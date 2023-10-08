@@ -11,7 +11,7 @@ from mathutils import Matrix
 aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
 aruco_parameters = aruco.DetectorParameters_create()
 
-camera_baseline_translation = (0.5, 0, 0)  # 0.5 meter along x axis
+camera_baseline_translation = (0.2, 0, 0)  # 0.5 meter along x axis
 # work_dir = '/storage/blender/output/'
 work_dir = r'C:\Users\zieft\Desktop\Texturing\output'
 a = 1

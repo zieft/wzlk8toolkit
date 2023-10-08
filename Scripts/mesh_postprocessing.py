@@ -6,14 +6,15 @@ import sys
 import os
 
 sys.path.append(os.path.curdir)
-# BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BASE_DIR = os.path.dirname(
     os.path.dirname(r'C:\Users\zieft\PycharmProjects\wzlk8toolkit\Scripts\mesh_postprocessing.py'))
+
 os.chdir(BASE_DIR)
 # output_dir='/storage/blender/output/mesh_postprocessed.obj'
-output_dir = r'C:\Users\zieft\Desktop\edge_detection\mesh_postprocessed.obj'
+output_dir = r'C:\Users\zieft\Desktop\final_test\mesh_postprocessed.obj'
 # filePath = '/storage/blender/input/texturedMesh.obj'
-filePath = r'C:\Users\zieft\Desktop\edge_detection\FPI3_200_new_output\Texturing\a1e3056d2d3e96c4fbc3b2e90db2ad84caf486b4\texturedMesh.obj'
+filePath = r'C:\Users\zieft\Desktop\final_test\texturedMesh.obj'
 
 from core.bpycore import *
 
@@ -217,14 +218,31 @@ bpy.ops.object.select_all(action='DESELECT')
 
 ## Verify direction
 view_layer = bpy.context.view_layer
-camera_data_verify = bpy.data.cameras.new(name='verifyCamera')
-camera_object_verify = bpy.data.objects.new(name='verifyCamera', object_data=camera_data_verify)
-view_layer.active_layer_collection.collection.objects.link(camera_object_verify)
-camera_object_verify.location = (0, 0, 1)
-BlenderCameraOperation.render_through_camera('verifyCamera')
-verifyCamera_img = ImageTransformProcess.readImageBIN(work_dir + 'verifyCamera.png')
-verify_corners, verify_ids, _ = ArucoInfoDetection.detect_save_aruco_info_image('verifyCamera', verifyCamera_img)
-if verify_corners == []:
+camera_data_verify1 = bpy.data.cameras.new(name='verifyCamera1')
+camera_object_verify1 = bpy.data.objects.new(name='verifyCamera1', object_data=camera_data_verify1)
+view_layer.active_layer_collection.collection.objects.link(camera_object_verify1)
+camera_object_verify1.location = (0, 0, 1)
+camera_data_verify2 = bpy.data.cameras.new(name='verifyCamera2')
+camera_object_verify2 = bpy.data.objects.new(name='verifyCamera2', object_data=camera_data_verify2)
+view_layer.active_layer_collection.collection.objects.link(camera_object_verify2)
+camera_object_verify2.location = (0, 0, -1)
+
+camera_object_verify2.select_set(True)
+view_layer.objects.active = camera_object_verify2
+bpy.ops.object.constraint_add(type='TRACK_TO')
+bpy.context.object.constraints["Track To"].target = bpy.data.objects["Empty"]
+bpy.context.object.constraints["Track To"].track_axis = 'TRACK_NEGATIVE_Z'
+bpy.context.object.constraints["Track To"].up_axis = 'UP_Y'
+bpy.ops.object.select_all(action='DESELECT')
+
+BlenderCameraOperation.render_through_camera('verifyCamera1')
+verifyCamera_img1 = ImageTransformProcess.readImageBIN(work_dir + 'verifyCamera1.png')
+BlenderCameraOperation.render_through_camera('verifyCamera2')
+verifyCamera_img2 = ImageTransformProcess.readImageBIN(work_dir + 'verifyCamera2.png')
+verify_corners1, verify_ids1, _ = ArucoInfoDetection.detect_save_aruco_info_image('verifyCamera1', verifyCamera_img1)
+verify_corners2, verify_ids2, _ = ArucoInfoDetection.detect_save_aruco_info_image('verifyCamera2', verifyCamera_img2)
+
+if len(verify_corners1) < len(verify_corners2):
     bpy.context.scene.objects["texturedMesh"].select_set(True)
     bpy.ops.transform.rotate(value=math.pi, orient_axis='Y')
 
@@ -243,7 +261,7 @@ for vert in me.vertices:
     vert.select = False
 
 for vert in me.vertices:
-    if (sqrt(vert.co.x ** 2 + vert.co.y ** 2) > 0.50) or ((vert.co.z < -0.99) or (vert.co.z > 0.10)):
+    if (sqrt(vert.co.x ** 2 + vert.co.y ** 2) > 0.50) or ((vert.co.z < -0.63) or (vert.co.z > -0.015)):
         vert.select = True
 
 bpy.ops.object.select_all(action='DESELECT')
@@ -253,3 +271,42 @@ bpy.ops.object.mode_set(mode='EDIT')
 bpy.ops.mesh.delete(type='VERT')
 bpy.ops.object.mode_set(mode='OBJECT')
 bpy.ops.export_scene.obj(filepath=output_dir, axis_forward='-Z', axis_up='Y')
+
+bpy.ops.object.select_all(action='DESELECT')
+obj = bpy.data.objects['texturedMesh']
+obj.select_set(True)
+bpy.context.view_layer.objects.active = obj
+
+image_name = obj.name + '_BakedTexture'
+img = bpy.data.images.new(image_name, 4096, 4096)
+
+# Due to the presence of any multiple materials, it seems necessary to iterate on all the materials, and assign them a node + the image to bake.
+for mat in obj.data.materials:
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    texture_node = nodes.new('ShaderNodeTexImage')
+    texture_node.name = 'Bake_node'
+    texture_node.select = True
+    nodes.active = texture_node
+    texture_node.image = img  # Assign the image to the node
+
+for s in bpy.data.screens:
+    for a in s.areas:
+        if a.type == 'VIEW_3D':
+            a.spaces[0].shading.use_scene_world_render = False
+            a.spaces[0].shading.use_scene_lights_render = True
+
+scene = bpy.context.scene
+scene.render.engine = 'CYCLES'
+scene.view_layers[0].cycles.use_denoising = True
+scene.cycles.samples = 20
+scene.cycles.preview_sample = 0
+scene.render.resolution_percentage = 100
+scene.render.use_border = False
+scene.render.bake.use_pass_direct = False
+scene.render.bake.use_pass_indirect = False
+scene.render.bake.margin = 1
+bpy.context.view_layer.objects.active = obj
+bpy.ops.object.bake(type='DIFFUSE', save_mode='EXTERNAL')
+
+img.save_render(filepath='C:\\TEMP\\final_test.png')
